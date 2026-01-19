@@ -1,0 +1,299 @@
+Да, описанную внутреннюю структуру мышления для ответа использована.
+
+## Введение
+
+Ниже приведён аналитический отчет по семи фреймворкам промт-инжиниринга: **RTF, COSTAR, IEEI, APE, PECRA, OSCAR, TAG**. Цель – дать руководителю ИТ‑подразделения структурированное сравнение, примеры использования и рекомендации по областям применения в работе с LLM‑системами. [nvoulgaris](https://nvoulgaris.com/writing-effective-ai-prompts/)
+
+***
+
+## Краткое описание фреймворков
+
+### RTF (Role, Task, Format)
+
+RTF задаёт роль модели, формулирует задачу и желаемый формат ответа, обеспечивая быстрый старт и понятную структуру промпта. [jads](https://www.jads.nl/news/what-is-prompt-engineering/)
+Фреймворк особенно полезен, когда нужно явно зафиксировать «персону» ИИ (например, «системный аналитик») и формат результата (таблица, список, отчёт). [rtfprompt](https://www.rtfprompt.com/framework.php)
+
+**Правила формирования промпта:**
+
+- Role: указать, кем должна быть модель (роль, область компетенции). [jads](https://www.jads.nl/news/what-is-prompt-engineering/)
+- Task: чётко сформулировать, что нужно сделать (проанализировать, сгенерировать, сравнить и т.п.). [rtfprompt](https://www.rtfprompt.com/framework.php)
+- Format: задать формат вывода (пункты, JSON, таблица, структура документа). [jads](https://www.jads.nl/news/what-is-prompt-engineering/)
+
+**Пример промпта (для системного аналитика):**
+
+> Role: Ты – системный аналитик в ИТ, специализируешься на автоматизации бизнес-процессов банка.  
+> Task: Проанализируй текущий процесс обработки заявок на кредит и предложи 3 варианта оптимизации с указанием рисков.  
+> Format: Ответ представь в виде таблицы с колонками: «Инициатива», «Описание», «Риски», «Оценка эффекта».  
+
+**Плюсы:**
+
+- Простая, легко запоминаемая структура; хорошо подходит для стандартизации промтов в команде. [rtfprompt](https://www.rtfprompt.com/framework.php)
+- Сильно повышает предсказуемость формата ответа, облегчая последующую обработку. [jads](https://www.jads.nl/news/what-is-prompt-engineering/)
+
+**Минусы:**
+
+- Слабее проработаны контекст, аудитория и стиль ответа.  
+- Для сложных задач может не хватать явного описания цели и ограничений.
+
+***
+
+### COSTAR / CO-STAR (Context, Objective, Style, Tone, Audience, Response)
+
+CO‑STAR (COSTAR) фокусируется на контексте задачи, цели, стиле и тоне, а также на целевой аудитории и формате ответа. [tech.gov](https://www.tech.gov.sg/technews/mastering-the-art-of-prompt-engineering-with-empower/)
+Он особенно полезен, когда важны тональность, голос, «человечность» и соответствие ожидаемому формату коммуникации (документация, письма, презентации). [nvoulgaris](https://nvoulgaris.com/writing-effective-ai-prompts/)
+
+**Правила формирования промпта:**
+
+- Context: кратко описать ситуацию и фон (система, проект, бизнес‑сценарий). [tech.gov](https://www.tech.gov.sg/technews/mastering-the-art-of-prompt-engineering-with-empower/)
+- Objective: сформулировать цель (что хотим в итоге – документ, решение, варианты). [tech.gov](https://www.tech.gov.sg/technews/mastering-the-art-of-prompt-engineering-with-empower/)
+- Style: задать желаемый стиль (официальный, технический, разговорный). [nvoulgaris](https://nvoulgaris.com/writing-effective-ai-prompts/)
+- Tone: указать тон (нейтральный, убедительный, обучающий и т.п.). [nvoulgaris](https://nvoulgaris.com/writing-effective-ai-prompts/)
+- Audience: описать аудиторию (руководство, разработчики, бизнес‑пользователи). [tech.gov](https://www.tech.gov.sg/technews/mastering-the-art-of-prompt-engineering-with-empower/)
+- Response: задать формат ответа (структура отчёта, список, тезисы). [nvoulgaris](https://nvoulgaris.com/writing-effective-ai-prompts/)
+
+**Пример промпта:**
+
+> Context: Внутренний проект по внедрению LLM‑ассистента для сотрудников кредитного подразделения банка.  
+> Objective: Подготовь краткую записку для ИТ‑директора о рисках и выгодах внедрения.  
+> Style: Официально-деловой, структурированный.  
+> Tone: Нейтральный, фактологичный.  
+> Audience: ИТ‑директор и руководители продуктовых команд.  
+> Response: 1–2 абзаца введения, затем маркированный список рисков и выгод.  
+
+**Плюсы:**
+
+- Отлично управляет стилем, тоном и ориентацией на аудиторию, что важно для управленческой и внешней коммуникации. [tech.gov](https://www.tech.gov.sg/technews/mastering-the-art-of-prompt-engineering-with-empower/)
+- Хорошо подходит для генерации документации, писем, презентационных материалов. [nvoulgaris](https://nvoulgaris.com/writing-effective-ai-prompts/)
+
+**Минусы:**
+
+- Чуть более громоздкий, чем RTF, для «быстрых» запросов.  
+- Слабее явно фиксирует роль модели; её нужно прописывать отдельно, если важно.
+
+***
+
+### IEEI (Information, Example, Explanation, Instruction)
+
+IEEI встречается в ряде практических гайдов как структура обучающих промтов: сначала даётся информация, затем пример, далее объяснение и только потом инструкция. [digitalstrategy](https://digitalstrategy.ie/wp-content/uploads/2025/01/ARTISAN-Instruction-Framework-for-Prompt-Engineering.pdf)
+Он особенно полезен для задач обучения, генерации инструкций, туториалов и пояснений, когда необходимо показать образец и затем дать чёткое задание. [libguides.ucd](https://libguides.ucd.ie/GENAI/Prompting)
+
+**Правила формирования промпта:**
+
+- Information: предоставить модели исходную информацию, факты, данные. [digitalstrategy](https://digitalstrategy.ie/wp-content/uploads/2025/01/ARTISAN-Instruction-Framework-for-Prompt-Engineering.pdf)
+- Example: показать один–два примера желаемого результата. [libguides.ucd](https://libguides.ucd.ie/GENAI/Prompting)
+- Explanation: пояснить логику/критерии, по которым нужно действовать. [digitalstrategy](https://digitalstrategy.ie/wp-content/uploads/2025/01/ARTISAN-Instruction-Framework-for-Prompt-Engineering.pdf)
+- Instruction: сформулировать конкретную задачу. [libguides.ucd](https://libguides.ucd.ie/GENAI/Prompting)
+
+**Пример промпта:**
+
+> Information: Ниже описание текущего процесса согласования ИТ‑изменений в банке (текст/пункты).  
+> Example: Пример желаемого формата:  
+> – Шаг 1: …  
+> – Шаг 2: …  
+> Explanation: Нужно сократить количество шагов, сохранив контроль рисков и регуляторные требования.  
+> Instruction: На основе описания процесса переработай его в 5–7 шагов, сохранив формат примера.  
+
+**Плюсы:**
+
+- Повышает качество ответов за счёт примеров и явно заданной логики. [digitalstrategy](https://digitalstrategy.ie/wp-content/uploads/2025/01/ARTISAN-Instruction-Framework-for-Prompt-Engineering.pdf)
+- Хорошо подходит для построения «обучающих» промтов и пошаговых инструкций. [libguides.ucd](https://libguides.ucd.ie/GENAI/Prompting)
+
+**Минусы:**
+
+- Требует больше времени и данных на подготовку (информация + пример).  
+- Для быстрых, разовых запросов может оказаться избыточным.
+
+***
+
+### APE (Action, Purpose, Expectation)
+
+APE концентрируется на том, что нужно сделать, зачем и какой результат ожидается. [juuzt](https://juuzt.ai/knowledge-base/prompt-frameworks/the-abe-framework/)
+Он оптимален для прикладных, «операционных» запросов, когда важны краткость и чёткий результат. [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+
+**Правила формирования промпта:**
+
+- Action: конкретизировать, что именно должен сделать ИИ (написать, проанализировать, перечислить). [fvivas](https://fvivas.com/en/ape-framework-prompts-llm/)
+- Purpose: объяснить, зачем это нужно (для подготовки встречи, отчёта, обучения и т.п.). [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+- Expectation: задать формат и критерии результата (кратко/развернуто, с примерами, в виде списка и т.д.). [fvivas](https://fvivas.com/en/ape-framework-prompts-llm/)
+
+**Пример промпта:**
+
+> Action: Составь 5 ключевых требований к внедрению LLM‑ассистента в банковскую ИТ‑систему.  
+> Purpose: Требования пойдут в раздел «Ограничения и допущения» технического задания.  
+> Expectation: Краткие формулировки по 1–2 предложения, в виде маркированного списка.  
+
+**Плюсы:**
+
+- Минимально сложная структура, легко внедряется для повседневного использования. [aipromptsx](https://aipromptsx.com/prompts/frameworks/ape)
+- Хорошо работает для коротких, но точных промтов, особенно в операционной работе. [aipromptsx](https://aipromptsx.com/prompts/frameworks/ape)
+
+**Минусы:**
+
+- Не задаёт контекст и аудиторию, их нужно добавлять вручную при сложных задачах.  
+- Нет явной роли модели, что иногда снижает качество экспертности ответа.
+
+***
+
+### PECRA (Purpose, Expectation, Context, Request, Action)
+
+PECRA – более «тяжёлый» фреймворк, ориентированный на сложные, многоуровневые задачи: он явно фиксирует цель, ожидания, контекст, запрос и способ выполнения/представления результата. [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+Хорошо подходит для промтов уровня «бриф для консультанта» – когда нужно глубокое понимание задачи и полученный результат «готов к применению». [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+
+**Правила формирования промпта:**
+
+- Purpose: зачем делается запрос, конечная цель. [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+- Expectation: какой тип ответа ожидается (план, список, отчёт, анализ). [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+- Context: ключевая фонова информация (отрасль, ограничения, существующие решения). [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+- Request: что именно нужно сделать (сформулировать, проанализировать, сравнить). [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+- Action: как стоит структурировать ответ (порядок тем, язык, формат). [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+
+**Пример промпта:**
+
+> Purpose: Подготовить основу для концепции внутреннего хранилища промтов для Центрального банка.  
+> Expectation: Структурированный документ с разделами: цели, архитектура, роли пользователей, риски.  
+> Context: Организация – крупный регулятор с высоким уровнем требований к ИБ, данные чувствительные, частичный офлайн‑режим.  
+> Request: Опиши целевую концепцию решения и предложи 3 варианта архитектурного подхода.  
+> Action: Ответ представь в виде структурированного конспекта, с маркированными списками и краткими пояснениями.  
+
+**Плюсы:**
+
+- Очень хорошо управляет качеством и структурой сложных аналитических ответов. [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+- Уменьшает неоднозначность и количество уточняющих итераций. [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+
+**Минусы:**
+
+- Более тяжёлый в использовании; требует дисциплины при формулировании.  
+- Избыточен для быстрых, простых запросов.
+
+***
+
+### OSCAR (Objective, Situation, Context, Action, Result)
+
+OSCAR заимствует логику из коучинг‑ и менеджмент‑подходов: начинается с цели, затем описывает ситуацию и контекст, задаёт действия и ожидаемый результат.  
+В промт‑инжиниринге OSCAR удобно использовать для формирования запросов, ориентированных на решение конкретной проблемы или кейса.
+
+**Правила формирования промпта:**
+
+- Objective: целевое состояние / результат (чего хотим достичь).  
+- Situation: краткое описание текущей ситуации или проблемы.  
+- Context: дополнительный фон (ограничения, участники, технологии).  
+- Action: что нужно сделать модели (предложить шаги, варианты, анализ).  
+- Result: как должен выглядеть результат (формат, глубина, метрики успеха).  
+
+**Пример промпта:**
+
+> Objective: Снизить время подготовки аналитических отчётов по банковским продуктам.  
+> Situation: Сейчас отчёты готовятся вручную аналитиками за 2–3 дня, используются разрозненные источники данных.  
+> Context: В банке внедряется LLM‑ассистент, доступен корпоративный DWH и BI‑система.  
+> Action: Предложи план внедрения ассистента для ускорения подготовки отчётов, с шагами поэтапного внедрения.  
+> Result: Ответ представь в виде поэтапного плана с оценкой рисков и ожидаемым эффектом по времени.  
+
+**Плюсы:**
+
+- Хорошо подходит для задач формата «проблема–решение–результат».  
+- Удобен для управленческих и консалтинговых сценариев (кейсы, инициативы, roadmaps).  
+
+**Минусы:**
+
+- Нет явной роли модели и детализации аудитории/стиля.  
+- Для чисто генеративных задач (контент, код) может быть менее удобен, чем RTF или APE.
+
+***
+
+### TAG (Task, Action, Goal)
+
+TAG – краткий фреймворк, который фиксирует задачу, ожидаемое действие и конечную цель.  
+Он полезен как «минимальный стандарт» для формулировки промтов в операционной работе.
+
+**Правила формирования промпта:**
+
+- Task: что за задача/область (написание ТЗ, анализ требований, генерация идей).  
+- Action: конкретное действие, которое должен выполнить ИИ (описать, перечислить, сравнить).  
+- Goal: почему это делается, какого эффекта ждём.  
+
+**Пример промпта:**
+
+> Task: Подготовка технического задания на доработку модуля скоринга.  
+> Action: Составь перечень функциональных требований на основе описания текущего процесса и новых правил.  
+> Goal: Использовать этот перечень как основу раздела «Функциональные требования» в ТЗ.  
+
+**Плюсы:**
+
+- Очень прост, подходит для стандартизации «минимального набора» элементов промта в команде.  
+- Удобен в повседневной работе аналитиков, разработчиков, тестировщиков.  
+
+**Минусы:**
+
+- Не покрывает контекст, стиль, аудиторию, формат – всё это нужно задавать дополнительно.  
+- Для сложных задач быстро становится недостаточным.
+
+***
+
+## Сравнительная таблица фреймворков
+
+### Характеристики фреймворков промт-инжиниринга
+
+| Фреймворк | Ключевые элементы | Основной фокус | Сложность использования | Тип задач | Сильные стороны | Ограничения |
+| --- | --- | --- | --- | --- | --- | --- |
+| RTF | Role, Task, Format  [jads](https://www.jads.nl/news/what-is-prompt-engineering/) | Роль модели и формат ответа | Низкая | Операционные, аналитика, документация | Простота, чёткий формат, хорошо задаёт роль | Мало внимания к контексту, аудитории и стилю |
+| COSTAR / CO‑STAR | Context, Objective, Style, Tone, Audience, Response  [nvoulgaris](https://nvoulgaris.com/writing-effective-ai-prompts/) | Стиль, тон, аудитория и формат | Средняя | Документация, письма, коммуникация с руководством | Отличный контроль тона и стиля, ориентированность на аудиторию | Громоздок для быстрых промтов, роль задаётся отдельно |
+| IEEI | Information, Example, Explanation, Instruction  [digitalstrategy](https://digitalstrategy.ie/wp-content/uploads/2025/01/ARTISAN-Instruction-Framework-for-Prompt-Engineering.pdf) | Обучение через примеры и инструкции | Средняя–высокая | Обучающие материалы, инструкции, переработка процессов | Высокое качество за счёт примеров и объяснений | Требует подготовки данных и примеров, избыточен для простых задач |
+| APE | Action, Purpose, Expectation  [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/) | Чёткая задача, цель и ожидания | Низкая | Краткие прикладные запросы, операционная работа | Очень прост, даёт точные, полезные ответы | Не задаёт контекст, аудиторию, роль |
+| PECRA | Purpose, Expectation, Context, Request, Action  [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/) | Глубокое понимание цели и контекста | Высокая | Сложные аналитические задачи, «брифы» | Снижает неоднозначность, подходит для сложных, многошаговых задач | Тяжёлый, требует дисциплины, избыточен для простых запросов |
+| OSCAR | Objective, Situation, Context, Action, Result | Цель, ситуация и решение | Средняя | Кейсы «проблема–решение», планирование | Удобен для формализации инициатив и планов | Нет роли и аудитории, слабый контроль стиля |
+| TAG | Task, Action, Goal | Минимальная структуризация запроса | Низкая | Повседневные, быстрые задачи | Очень прост, легко внедряется как «минимальный стандарт» | Почти не управляет контекстом, форматом и стилем |
+
+***
+
+## Выводы и рекомендации по применению
+
+### Общие выводы
+
+Комбинация фреймворков даёт возможность стандартизировать промт‑инжиниринг в ИТ‑подразделении под разные типы задач: от быстрых операционных запросов до сложных управленческих и архитектурных брифов. [jads](https://www.jads.nl/news/what-is-prompt-engineering/)
+RTF, APE и TAG подходят как «базовый уровень» для повседневной работы, тогда как COSTAR, PECRA, IEEI и OSCAR – как инструменты для более сложных, требовательных к контексту и форме задач. [digitalstrategy](https://digitalstrategy.ie/wp-content/uploads/2025/01/ARTISAN-Instruction-Framework-for-Prompt-Engineering.pdf)
+
+### Рекомендации по сферам применения
+
+- **RTF**  
+  - Использовать как стандартный шаблон для промтов системных аналитиков, архитекторов и разработчиков: чёткая роль, задача и формат. [rtfprompt](https://www.rtfprompt.com/framework.php)
+  - Применять для генерации технических описаний, спецификаций, таблиц требований.
+
+- **COSTAR / CO‑STAR**  
+  - Применять для подготовки писем, записок, презентаций и документации для руководства и бизнес‑подразделений, где критичны стиль и тон. [tech.gov](https://www.tech.gov.sg/technews/mastering-the-art-of-prompt-engineering-with-empower/)
+  - Рекомендовать менеджерам и продуктовым владельцам для коммуникации через LLM.
+
+- **IEEI**  
+  - Использовать при подготовке обучающих материалов, инструкций, гайдов по внутренним системам и процессам. [libguides.ucd](https://libguides.ucd.ie/GENAI/Prompting)
+  - Подходит для настройки LLM как «обучающего ассистента» для новых сотрудников.
+
+- **APE**  
+  - Рекомендовать как «быстрый» фреймворк для повседневных запросов аналитиков, разработчиков, тестировщиков, когда нужно чётко указать действие, цель и ожидания результата. [fvivas](https://fvivas.com/en/ape-framework-prompts-llm/)
+  - Особенно полезен в чат‑интерфейсах с большим потоком коротких задач.
+
+- **PECRA**  
+  - Использовать для сложных аналитических брифов: постановка задач на разработку, формирование концепций, оценка инициатив, сложные регуляторные кейсы. [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+  - Хороший кандидат на «золотой стандарт» промтов при подготовке материалов для руководства и внешних аудиторов, когда результат должен быть близок к профессиональному отчёту. [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+
+- **OSCAR**  
+  - Применять для задач формата «проблема–решение–результат», в том числе при анализе инициатив по цифровизации, оптимизации процессов и внедрению ИИ.  
+  - Может использоваться менеджерами, PM и аналитиками при проработке кейсов и roadmap‑ов.
+
+- **TAG**  
+  - Внедрить как минимальное правило для всех сотрудников: любой промт должен содержать Task, Action и Goal, даже если другой фреймворк не используется.  
+  - Полезен как «учебный мост» при обучении сотрудников основам промт‑инжиниринга.
+
+***
+
+## Ссылки на источники
+
+1. RTF Framework: JADS – «Prompt Engineering: the key to effective AI use» (RTF: Role, Task, Format). [jads](https://www.jads.nl/news/what-is-prompt-engineering/)
+2. RTF Framework: rtfprompt.com – «Framework RTF: Role – Task – Format – RTF Prompt». [rtfprompt](https://www.rtfprompt.com/framework.php)
+3. CO‑STAR / COSTAR: Nikos Voulgaris – «Writing Effective AI Prompts». [nvoulgaris](https://nvoulgaris.com/writing-effective-ai-prompts/)
+4. CO‑STAR / COSTAR: Tech.gov.sg – «Mastering the art of prompt engineering with Empower». [tech.gov](https://www.tech.gov.sg/technews/mastering-the-art-of-prompt-engineering-with-empower/)
+5. COSTAR‑A: arXiv – «COSTAR-A: A prompting framework for enhancing Large Language Models». [arxiv](https://arxiv.org/abs/2510.12637)
+6. PECRA Framework: Fabio Vivas – «PECRA Framework: Purpose, Expectation, Context, Request, Action». [fvivas](https://fvivas.com/en/pecra-framework-prompts-llm/)
+7. APE Framework: Fabio Vivas – «APE Framework: Action, Purpose, Expectation». [fvivas](https://fvivas.com/en/ape-framework-prompts-llm/)
+8. APE Framework (обзор): aipromptsx.com – «A.P.E Framework: A Simple Yet Powerful Approach to Effective ...». [aipromptsx](https://aipromptsx.com/prompts/frameworks/ape)
+9. APE Framework (описание): juuzt.ai – «APE framework – Actionable insights for AI prompt engineering». [juuzt](https://juuzt.ai/knowledge-base/prompt-frameworks/the-abe-framework/)
+10. CLEAR / общие подходы к промт‑инжинирингу: UCD LibGuides – «Prompt Engineering – Artificial Intelligence». [libguides.ucd](https://libguides.ucd.ie/GENAI/Prompting)
+11. ARTISAN / I‑компоненты (Information, Examples, Instructions) как часть структурных подходов к промтам: «ARTISAN Instruction Framework for Prompt Engineering». [digitalstrategy](https://digitalstrategy.ie/wp-content/uploads/2025/01/ARTISAN-Instruction-Framework-for-Prompt-Engineering.pdf)

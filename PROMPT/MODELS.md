@@ -1,0 +1,1 @@
+Какая модель лучше всего подойдет для решения данной задачи описанная в файле:  claude-haiku-4.5, deepseek-v3.1, gemini-3-pro, gemma-3-27b, glm-4.6, gpt-5.1, gpt-oss-120b, grok-4, perplexity, qwen3-30b-a3b
