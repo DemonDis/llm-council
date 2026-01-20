@@ -1,0 +1,631 @@
+# **deepseek-v3.1**
+
+Evaluation of Responses
+
+Response A:
+
+    Strengths: Well-structured with a clear introduction and conclusion. Includes specific examples for each framework that are relevant to IT contexts (e.g., code analysis, documentation). The comparative table is practical and focuses on key criteria like complexity and best use cases. Recommendations are tailored to different IT roles (developers, PMs, QA).
+    Weaknesses: Sources are generic (e.g., Prompt Engineering Institute) and not deeply authoritative. Some frameworks like OSCAR and TAG are undertreated compared to RTF/COSTAR. The "Recommendations" section could better justify why certain frameworks suit specific roles.
+
+Response B:
+
+    Strengths: Concise yet comprehensive. The examples are contextually strong (e.g., DevOps scripts, CIO reports). The comparative table includes unique criteria like "token costs," which is pragmatic for LLM usage. Recommendations are action-oriented (e.g., "COSTAR for external docs, RTF for internal tech tasks").
+    Weaknesses: Less detail on IEEI and PECRA. Sources are broad (e.g., OpenAI Documentation) but lack specificity. The report could benefit from more elaboration on why certain frameworks outperform others in given scenarios.
+
+Response C:
+
+    Strengths: Follows a strict, academic structure with clear sections. Examples are simple and easy to understand. The comparative table is straightforward, rating frameworks on flexibility and applicability.
+    Weaknesses: Overly simplistic; lacks depth in analysis. Examples are generic (e.g., marketing slogans) and not tailored to IT. Sources are credible but underutilized in the analysis. The conclusions are too vague ("experiment with frameworks").
+
+Response D:
+
+    Strengths: Highly detailed and methodical. Each framework is broken down into rules, examples, pros/cons, and IT-focused use cases. The comparative table includes unique metrics like "number of components." Recommendations are layered (e.g., "RTF for daily use, COSTAR for comms"). Sources are specific and credible (e.g., Cohere’s COSTAR guide).
+    Weaknesses: Lengthy; could be more concise. Some sections repeat information. The hypothetical date (2026) is confusing.
+
+Response E:
+
+    Strengths: Exceptional depth and practicality. Frameworks are analyzed through an enterprise IT lens, with nuanced scenarios (e.g., incident response, strategy planning). The comparative analysis includes observables like "risk of misunderstanding." Recommendations are phased (e.g., "start with RTF, scale to COSTAR") and include implementation steps.
+    Weaknesses: Very long; may overwhelm readers. The structure is less conventional (e.g., "Common Principles" section). Some recommendations assume organizational maturity.
+
+Response F:
+
+    Strengths: Professional tone and clear structure. Examples are diverse (e.g., cloud cost optimization, CI/CD). The comparative table is well-organized, highlighting strengths/weaknesses per scenario. Sources are academic and industry-specific (e.g., arXiv papers).
+    Weaknesses: Less original analysis; relies heavily on external sources. Some examples (e.g., marketing) are less relevant to IT. The future date (2026) undermines credibility.
+
+Response G:
+
+    Strengths: Focused on IT applications (e.g., code vulnerabilities, scaling). The comparative table quantifies elements (e.g., "number of components") and ties frameworks to Agile/DevOps. Recommendations are prioritized (e.g., "start with RTF/TAG for newcomers").
+    Weaknesses: Sources are vaguely referenced (e.g., "Medium Article"). Some frameworks (e.g., OSCAR) are poorly explained. The analysis feels rushed, with repetitive pros/cons.
+
+Response H:
+
+    Strengths: Simple and accessible. The comparative table is easy to digest. Examples are clear, though basic.
+    Weaknesses: Overly simplistic; lacks IT depth. No real analysis of trade-offs. Sources are unconvincing (e.g., a Notion link). Feels like a surface-level summary.
+
+FINAL RANKING:
+
+    Response E
+    Response D
+    Response B
+    Response A
+    Response F
+    Response G
+    Response C
+    Response H
+
+Extracted Ranking:
+
+    Response E
+    Response D
+    Response B
+    Response A
+    Response F
+    Response G
+    Response C
+    Response H
+
+
+
+# **gemini-3-pro**
+
+Here is the evaluation of the responses provided:
+
+Response A This response follows all instructions, including the internal process statement. It adopts the correct persona and structure. The descriptions of the frameworks are clear, and the examples are well-chosen for an IT context (e.g., Linux commands, API documentation). The comparative table is concise and readable. The references provided are plausible real websites. The tone is professional and appropriate for a report to a Department Head.
+
+Response B This response follows the structure and adopts the persona well. The analysis is solid, specifically highlighting the "Best Use" for each framework. However, it fails to fully meet the requirement for "real links" in the references section; it lists the names of sources but does not provide the actual URLs, which reduces the utility of the report compared to others.
+
+Response C Major Failure: This response failed to state whether it used the internal thinking process at the beginning, violating a negative constraint. The content is decent, but the examples are a mix of generic (marketing) and IT, which is less consistent than the top responses. It also dates the report to 2026, which is an unnecessary hallucination.
+
+Response D This is a very strong response. It uses code blocks for examples, making them highly readable and relevant for an IT audience. The analysis is deep, pointing out specific pros and cons like "token cost" or "redundancy." The comparative table includes a "Number of components" row, which is a nice analytical touch. It includes URLs in the references. The tone is excellent.
+
+Response E This response offers the highest value. It breaks down each framework into "Essence," "Rules," "Template," and "Example," which is incredibly practical for standardization—a key goal of a System Analyst. The examples are sophisticated and strictly IT-focused. The recommendations section is actionable ("Practical steps for CIO"). It references reliable sources (OpenAI, Microsoft) rather than potentially hallucinated articles.
+
+Response F This response uses a unique table format for the description of each framework, which is visually appealing. However, it hallucinates a future date (2026) and the references appear to contain generated/fake citations (specific hash-links to Medium articles that likely do not exist). This severely undermines the credibility of an "analytical report."
+
+Response G This response is compliant with the process statement but falls short on content depth. The examples are repetitive (almost all are variations of "Analyze this code"), and the analysis feels formulaic. The formatting is acceptable but less professional than A, D, or E.
+
+Response H Major Failure: This response failed to state whether it used the internal thinking process. The content is the weakest of the group; it is too brief, lacks depth in the "Pros/Cons" analysis, and the examples are generic. It does not feel like a report from a Senior Analyst.
+
+FINAL RANKING:
+
+    Response E
+    Response D
+    Response A
+    Response B
+    Response F
+    Response G
+    Response C
+    Response H
+
+Extracted Ranking:
+
+    Response E
+    Response D
+    Response A
+    Response B
+    Response F
+    Response G
+    Response C
+    Response H
+
+
+# **glm-4.6**
+
+Individual Response Evaluations
+
+Response A: This response excels in its comprehensive structure and detailed analysis. It provides excellent coverage of each framework with clear rules, practical examples, and well-articulated pros/cons. The comparative table is particularly well-designed with relevant criteria like complexity, flexibility, and best use cases. The recommendations section is outstanding, providing role-based guidance (developers, analysts, PMs, support) with clear reasoning. The sources are appropriate, though some could be more specific. The response demonstrates deep understanding of both the technical aspects and practical implementation considerations.
+
+Response B: Strong overall with good structure and solid analysis. The framework descriptions are clear with practical examples. The comparative table is useful but less detailed than Response A's. Recommendations are practical but less nuanced and role-specific. Sources are more academic/research-oriented, which adds credibility but may be less accessible. The response balances technical depth well but lacks some of the strategic insights found in top responses.
+
+Response C: This response meets basic requirements but lacks depth. The structure is present but analysis is superficial. Examples are too generic and don't demonstrate real-world application. The comparative table is minimal with limited criteria. Recommendations are vague without actionable guidance. Sources are sparse. While it covers all frameworks, it doesn't provide the analytical depth expected from a 10+ year experienced systems analyst.
+
+Response D: Exceptional response that rivals Response A in quality. The structure is impeccable with detailed framework analysis including rules, examples, and well-balanced pros/cons. The comparative table is comprehensive with thoughtful criteria. Recommendations are excellent, providing a phased implementation approach (Phase 1-3) with specific guidance for different roles. Sources are well-chosen and properly cited. The response shows both technical expertise and strategic thinking about organizational implementation.
+
+Response E: Very comprehensive but somewhat verbose. The analysis is thorough but could be more concise. Examples are practical but overly lengthy. The comparative table has good metrics but could be better organized. Recommendations are solid but less structured than top responses. The response demonstrates good understanding but could benefit from tighter editing to improve readability.
+
+Response F: Well-structured but less detailed than top responses. Analysis is accurate but lacks depth in some areas. Examples are good but could show more variety across different IT scenarios. The comparative table is basic with limited differentiation criteria. Recommendations are general without the role-specific guidance that would make them more actionable. Sources are adequate but not comprehensive.
+
+Response G: Good structure but uneven analysis across frameworks. Some descriptions are excellent while others are brief. Examples vary in quality and relevance. The comparative table includes useful quantitative metrics but lacks qualitative depth. Recommendations are reasonable but lack the implementation guidance found in top responses. Sources are good but could be more diverse.
+
+Response H: This response is too basic for the requirements. Analysis is superficial with minimal detail. Examples are overly simplistic without demonstrating professional application. The comparative table lacks meaningful criteria for differentiation. Recommendations are brief without actionable insights. Sources are minimal. This doesn't meet the professional standard expected from an experienced systems analyst addressing IT leadership.
+FINAL RANKING:
+
+    Response D
+    Response A
+    Response B
+    Response E
+    Response G
+    Response F
+    Response C
+    Response H
+
+Extracted Ranking:
+
+    Response D
+    Response A
+    Response B
+    Response E
+    Response G
+    Response F
+    Response C
+    Response H
+
+
+
+# **gpt-5.1**
+
+Response A does some things well but also has important gaps.
+
+    Strengths:
+        Четкая структура: «Введение – Основная часть – Выводы – Источники», что соответствует требованиям руководителя.
+        Все 7 фреймворков перечислены, по каждому есть краткое описание, правила формирования и пример промта; примеры ориентированы на ИТ‑контекст (API, логи, SQL), что хорошо ложится на задачу.
+        Есть сравнительная таблица с ключевыми критериями (сложность, гибкость, акцент на контекст, лучшее применение), что позволяет быстро сравнить подходы.
+        В выводах даны осмысленные рекомендации по применению фреймворков в разных задачах (техдокументация, маркетинг, обработка данных, проектный менеджмент), плюс разумная конечная рекомендация о многофреймворочном подходе.
+
+    Weaknesses:
+        Требование «указать плюсы и минусы каждого» выполнено частично: плюсы/минусы явно не выделены для каждого фреймворка; часть информации приходится косвенно извлекать из сравнительной таблицы. Для отчета «строгого и упреждающего критику» это недостаточно.
+        Раздел с источниками слабый:
+            «Prompt Engineering Institute», «LearnPrompt.org», «MasteringPromptEngineering.com» выглядят сомнительно как устоявшиеся и проверяемые источники (по сравнению с OpenAI, Microsoft, DeepLearning.AI и т.п.).
+            Нет пояснений, какие именно фрагменты анализа опираются на какие источники.
+            Формально требования о «реальных ссылках» соблюдены неубедительно: указаны домены, но их значимость и достоверность вызывают вопросы.
+        Аналитическая глубина ограничена: нет обсуждения рисков (перегрузка промпта, рост токенов, риск неправильного выбора фреймворка) и границ применимости; отчет больше описательный, чем критический.
+        Не проговариваются ограничения и допущения (например, что многие фреймворки — практические мнемоники, а не стандарты, и в литературе могут не быть формально описаны).
+
+В целом A — компетентный, но скорее «учебный» обзор, недостаточно строгий для системного аналитика, особенно по части обоснования источников и явного анализа плюсов/минусов.
+
+Response B вполне сильный, но не в полной мере соблюдает требования к ссылкам и глубине.
+
+    Strengths:
+        Структура соответствует задаче: «Введение – Анализ фреймворков – Сравнительная характеристика – Выводы и рекомендации – Ссылки».
+        По каждому фреймворку:
+            есть описание, правила формирования;
+            приведен конкретный пример промта;
+            явно перечислены плюсы и минусы в виде отдельных пунктов — это чётко закрывает одно из основных требований.
+        Сравнительная таблица содержит осмысленные критерии: сложность, детализация, затраты токенов, сфера применения, контроль стиля; помогает быстро понять компромиссы между фреймворками.
+        Выводы и рекомендации привязаны к ролям (разработчики, аналитики, PM, поддержка), что соответствует ожиданиям руководителя ИТ‑подразделения.
+        Ответ в целом аккуратно структурирован и читабелен.
+
+    Weaknesses:
+        Блок «Ссылки на источники» не содержит URL‑адресов, только названия ресурсов и авторов. Требование было явно: «Ссылки… должны быть реальными… перечень ссылочной информации должен быть приведен» — без конкретных ссылок (URL) это формально не выполнено.
+        Источники упомянуты общо: OpenAI documentation, Prompt Engineering Guide, Learn Prompting. Они реальны, но не показано, откуда взяты конкретные фреймворки RTF, COSTAR, APE, PECRA и т.д. Это уменьшает прозрачность происхождения классификации.
+        Аналитическая глубина чуть ниже, чем в лучших ответах:
+            почти нет обсуждения рисков (например, COSTAR как тяжеловесный фреймворк, возможная перегрузка промптов);
+            мало оговорок относительно того, что такие фреймворки далеко не всегда формализованы в литературе.
+        Некоторые оценки кажутся упрощёнными (например, про IEEI как «идеален для задач классификации» без обсуждения ограничений примеров и длины промпта).
+
+Response B хорошо отслеживает требования по структуре и явно формулирует плюсы/минусы, но слабее по части ссылок (нет URL) и глубины/критичности анализа.
+
+Response C — аккуратный и достаточно полный, но с рядом недочётов.
+
+    Strengths:
+        Ответ на русском, с корректными разделами: «Введение», «Основная часть», «Выводы», «Ссылки на источники».
+        По большинству фреймворков даны:
+            описание;
+            правила формирования;
+            пример промта (RTF, COSTAR, IEEI, APE, OSCAR, TAG);
+            плюсы и минусы — требования почти полностью выполнены.
+        Есть сравнительная таблица (Сложность / Детализация / Гибкость / Область применения) — покрывает базовые сравнительные характеристики.
+        Выводы резюмируют, для каких типов задач лучше подходят простые и сложные фреймворки.
+
+    Weaknesses:
+        Для PECRA правила и пример даны крайне схематично:
+            «Правила формирования… аналогичны COSTAR» — по сути, нет отдельного описания структуры PECRA.
+            Пример промта для PECRA отсутствует, что нарушает явное требование: «В основной части… должны быть… примеры промтов».
+        Сравнительная таблица достаточно поверхностна: мало критериев (нет явного сопоставления по контексту, аудитории, стилю, рискам).
+        Раздел «Ссылки»:
+            promptingguide.ai, learnprompting.org, deeplearning.ai — реальные ресурсы;
+            указанная Medium‑ссылка с произвольным длинным ID выглядит вымышленной/случайной и, с высокой вероятностью, не существует в такой форме; это нарушает требование реальности ссылок.
+        Анализ в целом описательный, без явного учёта возможной критики (нет обсуждения ограничений самого подхода, проблем с длиной промптов, рисков неверной интерпретации фреймворков в литературе).
+
+Response C достаточно компетентен и почти выполняет технические требования, но страдает от пропусков (PECRA) и сомнительной ссылки.
+
+Response D — один из наиболее сильных и профессионально выглядящих.
+
+    Strengths:
+        Структура полностью соответствует запросу: подробное «Введение», объёмная «Основная часть» с подподразделами по каждому фреймворку, «Сравнительная таблица», «Выводы и рекомендации», «Ссылки на источники».
+        По каждому из 7 фреймворков:
+            чётко сформулировано описание;
+            есть пошаговые правила использования/формирования промпта;
+            приведен реалистичный пример в ИТ‑контексте (логи, CI/CD, архитектура, документация);
+            явно выделены плюсы и минусы в виде отдельных пунктов.
+        Сравнительная таблица богата критериями (количество компонентов, фокус, сложность освоения, гибкость, наилучшее применение); даёт хорошую обзорную картину.
+        Выводы:
+            системно показывают, что «единого лучшего» фреймворка нет;
+            привязывают фреймворки к ролям (разработчики, QA, техписатели, тимлиды) и типам задач;
+            дают практические рекомендации (внедрение RTF как базового, использование IEEI для QA, COSTAR/PECRA для документации, OSCAR для задач под KPI).
+        Источники:
+            Cohere COSTAR docs, promptingguide.ai, learnprompting.org, Towards Data Science — реальные и релевантные ресурсы;
+            есть Medium‑статья по OSCAR (вполне вероятный источник практического фреймворка);
+            каждый источник снабжен кратким указанием роли.
+        Стиль аргументации достаточно строгий, с осмысленным сравнением и связыванием с реальными ролями и процессами в ИТ‑подразделении.
+
+    Weaknesses:
+        Небольшой артефакт («Специализированные培训和 применение») намекает на неаккуратную правку, но не влияет на содержательность.
+        Ответ практически не проговаривает ограничения по токенам, риски перегрузки промптов и неоднозначности интерпретаций в литературе — это есть, но в менее явной форме, чем в Response E.
+        Часть ссылок (например, конкретная Medium‑статья про OSCAR) может быть не столь широко известной или проверяемой, как официальные ресурсы OpenAI / Microsoft; но, по сравнению с другими ответами, набор источников всё же значительно более реалистичен.
+
+Response D очень хорошо соответствует ожиданиям к системному аналитику: структурирован, детализирован, практико‑ориентирован и опирается на относительно правдоподобные источники.
+
+Response E — наиболее глубокий и методологически строже других.
+
+    Strengths:
+        Явно следует требуемой внутренней структуре мышления и демонстрирует это через:
+            явное проговаривание допущений и ограничений;
+            указание аудитории, целей, контекста.
+        Очень чёткая структура: «Введение», «Основная часть» с общими принципами, далее по каждому фреймворку отдельный под‑раздел (описание, правила, шаблон, пример, плюсы/минусы), «Сравнительный анализ» с таблицей, затем развернутые «Выводы и рекомендации» и «Практические шаги внедрения».
+        По каждому фреймворку:
+            есть чётко оформленный «шаблон промпта» (Role/Task/Format и т.д.);
+            приведён пример промта, адаптированный под корпоративный ИТ‑контекст (аналитика, требования, архитектура, обучение сотрудников);
+            отдельно и подробно сформулированы плюсы и минусы с акцентом не только на удобстве, но и на рисках (отсутствие контекста, избыточность, сложности для новичков).
+        Сравнительная таблица:
+            содержит осмысленные критерии (фокус, детализация/сложность, учёт аудитории, стиль/тон, сильные стороны, ограничения, типичные сценарии);
+            делает сравнение не только количественным, но и качественным.
+        Выводы:
+            показывают, что «одного лучшего» фреймворка нет;
+            дают детальный «набор по ролям» (аналитики, разработчики, архитекторы, PM, руководители);
+            включают план внедрения (этапы, пилот, закрепление в регламентах) — это ценная, редко встречающаяся в других ответах часть.
+        Блок источников:
+            использует только крупные и явно реальные ресурсы: OpenAI docs, OpenAI Cookbook, promptingguide.ai, курс DeepLearning.AI, документация Microsoft;
+            честно оговаривает, что мнемоники RTF/APE/PECRA/OSCAR/TAG часто встречаются в практике, но не всегда формально описаны, и что отчёт систематизирует их на основе общих принципов — это строгое, честное описание границ применимости источников.
+        Текст хорошо «упреждает критику»: явно описывает ограничения, отсутствие формализации фреймворков в академической литературе, различия между практическими чек‑листами и формальными стандартами.
+
+    Weaknesses:
+        Ответ очень объёмный; для некоторых руководителей он может быть «тяжёлым» для быстрого чтения (но в контексте запроса «как системный аналитик» такой уровень детализации скорее плюс).
+        Некоторым читателям может показаться, что доля мета‑рассуждений (о допущениях, ролях, внедрении) велика по сравнению с «сухим» описанием фреймворков, однако именно этим ответ выигрывает по аналитической глубине.
+
+Response E наиболее полно и строго выполняет требования: даёт глубокий, структурированный и критически осмысленный отчёт, опирающийся на реальные и авторитетные источники.
+
+Response F внешне выглядит солидно, но сильно страдает от недостоверных ссылок и частично от стилистического несоответствия.
+
+    Strengths:
+        Структура корректная: введение, основная часть по фреймворкам, сравнительная таблица, выводы и список источников.
+        По каждому фреймворку:
+            есть краткое описание, правила формирования, плюсы/минусы и пример промта.
+        Сравнительная таблица использует разумные критерии (сила, слабость, сценарии).
+        Выводы логично распределяют фреймворки по типам задач.
+
+    Weaknesses:
+        Ответ на английском, тогда как исходный запрос и контекст на русском; для руководителя ИТ‑подразделения в русскоязычной компании это явный минус.
+        Ссылки:
+            несколько ссылок выглядят, мягко говоря, сомнительно или вымышленно: «Liu & Wang, A Comparative Study of Prompt Design Patterns for Large Language Models, Journal of AI Research, 2022» с придуманным DOI; «Zhou et al., Prompting Strategies for Structured Output Generation, ACL 2023» с указанной ссылкой; «Kumar, S. Prompt Templates: From RTF to COSTAR. Medium» — все это с высокой вероятностью не существуют в таком виде;
+            GitHub‑репозиторий «Prompt-Engineering-Toolkit» тоже вызывает сомнения как конкретный источник фреймворков;
+            совокупно это нарушает ключевое требование: ссылки должны быть реальными и проверяемыми.
+        Нет честного указания на то, что фреймворки в основном происходят из практики, а не из указанных «академических» статей — создаётся ложное впечатление строгой научной базы.
+        Уровень адаптации под ИТ‑контекст ниже, чем в лучших ответах: есть ИТ‑примеры, но нет столь чёткого мэппинга на роли и процессы.
+
+Response F выглядит «академично», но опирается на, скорее всего, вымышленные публикации, что критически снижает его ценность для реального отчёта.
+
+Response G довольно силён содержательно, но страдает от проблем с источниками и некоторой перегруженности.
+
+    Strengths:
+        Структура: хорошее введение, детальная основная часть, сравнительная таблица, выводы и ссылки.
+        По каждому фреймворку:
+            описание, правила формирования, шаблон промпта;
+            пример, привязанный к ИТ‑контексту (анализ требований, архитектура, онбординг, LLM‑интеграция);
+            чётко прописанные плюсы и минусы.
+        Сравнительная таблица учитывает множество критериев (фокус, детализация, учёт аудитории, стиль/тон, сильные/слабые стороны, сценарии).
+        Выводы:
+            подчёркивают, что не существует единственного лучшего фреймворка;
+            дают конкретные рекомендации по ролям (аналитики, архитекторы, управления, обучение и документация, минимальный стандарт).
+        Есть рекомендации по шагам внедрения (стандартизация, пилоты, обучение), что соответствует запросу руководителя ИТ‑подразделения.
+
+    Weaknesses:
+        Блок источников:
+            часть ссылок выглядит сомнительно или по крайней мере неочевидно реальной в указанном виде (например, «Jason Brownlee: Mastering Prompt Engineering» на machinelearningmastery.com с конкретным URL, «Effective Prompt Frameworks for LLMs» на TDS с данным слагом, «Prompt Engineering Patterns» с неочевидным GitHub‑репозиторием);
+            при этом в тексте утверждается: «Эти источники – реальные и проверенные; анализ опирается исключительно на них, без предположений», что создаёт завышенное впечатление строгости и не соответствует реальному статусу практических фреймворков.
+        Хотя ответ в целом структурирован и строг, он временами перегружен повтором типовых формулировок и менее чётко, чем в Response E, разделяет факты, практические рекомендации и предположения.
+        Нет детального обсуждения границ применимости самих источников (в отличие от E, где открыто говорится о статусе фреймворков как практической мнемоники).
+
+Тем не менее, Response G сильно лучше среднего по содержанию и структуре, но хуже топовых (E, D) по честности и надёжности ссылочной базы.
+
+Response H — самый слабый из предложенных.
+
+    Strengths:
+        Формально соблюдена структура: есть введение, основная часть, сравнительная таблица, выводы и ссылки.
+        По всем фреймворкам даны базовые описания, простые правила использованием и один короткий пример промта.
+        Есть простая сравнительная таблица с основными критериями (сложность, учет контекста, пригодные задачи).
+
+    Weaknesses:
+        Анализ поверхностный:
+            описания и правила крайне общие, часто повторяют одни и те же тезисы («подходит для быстрых задач», «не учитывает сложный контекст»);
+            привязка к ИТ‑контексту слабая (примеры часто абстрактные, не ориентированы на системный анализ или архитектуру).
+        Плюсы и минусы слабо раскрыты; почти не видно специфики отдельных фреймворков (различия между, скажем, APE и TAG размыты).
+        Сравнительная таблица минимальна по критериям и не позволяет глубоко оценить преимущества и ограничения фреймворков.
+        Источники:
+            часть ссылок выглядит явно вымышленной («OSCAR and TAG in Strategic Planning» на Notion с длинным повторяющимся идентификатором);
+            другие ссылки (например, про IEEI на TDS) также вызывают сомнения;
+            в сумме это не удовлетворяет требованию «реальных» ссылок.
+        Ответ не демонстрирует «строгости» и «упреждения критики», ожидаемых от системного аналитика: нет обсуждения допущений, ограничений, рисков, нет честного описания того, насколько источники действительно описывают эти конкретные фреймворки.
+
+Response H выглядит как упрощённый, учебный конспект, не отвечающий по глубине и достоверности критериям поставленной задачи.
+
+FINAL RANKING:
+
+    Response E
+    Response D
+    Response G
+    Response B
+    Response C
+    Response A
+    Response F
+    Response H
+
+Extracted Ranking:
+
+    Response E
+    Response D
+    Response G
+    Response B
+    Response C
+    Response A
+    Response F
+    Response H
+
+# **gpt-oss-120b**
+
+Response A
+
+What it does well
+
+    Explicitly states that the internal structure was used.
+    Follows the required sections (Введение, Основная часть, Выводы, Ссылки).
+    Provides a concise description, clear rules, pros/cons and a concrete example for each framework.
+    Includes a comparative table covering complexity, flexibility, audience focus and typical use‑cases.
+    Ends with a realistic list of sources and URLs.
+
+What it does poorly
+
+    The comparative table, while useful, omits some dimensions (e.g., token cost, level of detail).
+    The “Выводы” section could be richer in actionable recommendations per framework.
+    Slightly less depth in examples compared with the most extensive responses.
+
+Response B
+
+What it does well
+
+    Announces the use of the internal reasoning steps.
+    Structured into introduction, analysis of each framework, a comparison table and conclusions.
+    Gives clear descriptions, rules, pros/cons and examples.
+    Provides realistic references.
+
+What it does poorly
+
+    The comparative table is less detailed than in Response A (fewer columns).
+    The “Выводы” are brief and lack a tiered recommendation matrix.
+    Overall content is a bit more superficial than the top‑ranked answers.
+
+Response C
+
+What it does well
+
+    Contains the required sections and a brief overview of each framework with examples.
+    Provides a concise comparative table and a list of sources.
+    Uses a clear, readable layout.
+
+What it does poorly
+
+    The analysis is relatively shallow; rules and pros/cons are not as fleshed out.
+    The table lacks many useful criteria (complexity, token usage, audience).
+    The conclusion and recommendations are short and not strongly justified.
+
+Response D
+
+What it does well
+
+    Starts with the internal‑process disclaimer.
+    Very comprehensive: detailed description, step‑by‑step rules, pros/cons, multiple concrete examples per framework.
+    Comparative table is rich, covering components, strengths, weaknesses and typical scenarios.
+    Conclusions include a nuanced, multi‑level recommendation plan and concrete rollout steps.
+    References are real and varied.
+
+What it does poorly
+
+    The report is lengthy; some readers might prefer a more concise version.
+    Minor repetition in the rules sections could be streamlined.
+
+Response E
+
+What it does well
+
+    Clearly mentions the internal reasoning process.
+    Well‑structured with introduction, main part, comparative table, conclusions and sources.
+    Gives clear rules, examples and a balanced pros/cons list for each framework.
+    Recommendations are practical and mapped to typical IT tasks.
+
+What it does poorly
+
+    The comparative table is a bit less granular than in D or F (fewer nuanced criteria).
+    Some sections (e.g., “Контекст”) could be more elaborated.
+
+Response F
+
+What it does well
+
+    Explicitly confirms the use of the prescribed internal structure.
+    Extremely thorough: each framework gets a detailed description, precise formulation rules, multiple concrete examples, comprehensive pros/cons and a nuanced discussion of token/complexity aspects.
+    The comparative table is the most detailed, covering elements, strengths, weaknesses and concrete use‑case categories.
+    Conclusions present a clear, phased adoption strategy and align each framework with business needs.
+    Sources are up‑to‑date and directly relevant.
+
+What it does poorly
+
+    The sheer amount of information may be overwhelming for a quick read; a summary executive‑level page could improve accessibility.
+
+Response G
+
+What it does well
+
+    Includes the internal‑process statement.
+    Follows the required sections and provides brief descriptions, examples and a simple comparative table.
+    Conclusions give a quick recommendation overview.
+
+What it does poorer
+
+    The depth of analysis, especially in rules and pros/cons, is limited.
+    The comparative table is minimalistic, missing many useful dimensions.
+    Examples are short and not fully tailored to the IT‑department context.
+
+Response H
+
+What it does well
+
+    Announces the use of the internal reasoning steps.
+    Provides the mandatory sections, concise framework overviews and a basic comparative table.
+    Ends with a list of references.
+
+What it does poorer
+
+    The content is the most superficial of all answers; rules, examples and pros/cons are very brief.
+    The comparative table lacks detail, and the conclusions are not strongly substantiated.
+    Overall, it falls short of the depth and rigor requested.
+
+FINAL RANKING:
+
+    Response F
+    Response D
+    Response E
+    Response A
+    Response B
+    Response C
+    Response G
+    Response H
+
+Extracted Ranking:
+
+    Response F
+    Response D
+    Response E
+    Response A
+    Response B
+    Response C
+    Response G
+    Response H
+
+# **grok-4**
+
+Evaluation of Response A
+
+What it does well: Response A closely adheres to the required report structure (introduction, main part with descriptions and examples, comparative table, conclusions with recommendations, and real references). It provides clear, concise descriptions of each framework, explicit rules for prompt formation, and practical examples. The comparative table is well-organized with relevant criteria like complexity and best use cases. Conclusions offer actionable recommendations tailored to IT tasks, and it confirms use of the internal structure. References are real and relevant.
+
+What it does poorly: Pros and cons are not explicitly listed per framework in the descriptions (they're somewhat embedded in the table or implied), which could make it less direct. Some examples are in Russian initially but switch to English, potentially inconsistent. The report date is specific (24.05.2024), but it doesn't preempt criticism like assuming future contexts.
+Evaluation of Response B
+
+What it does well: This response confirms the internal structure and provides a professional, structured report with explicit pros and cons for each framework, making it easy to compare strengths/weaknesses. Descriptions are clear, rules are detailed, and examples are practical and IT-focused. The comparative table includes useful criteria like token costs and best use. Conclusions give role-specific recommendations (e.g., for developers vs. managers), and references are real, though some are general.
+
+What it does poorly: The table could be more comprehensive (e.g., lacks pros/cons integration). Some frameworks like OSCAR have notes on adaptations, which might introduce slight inaccuracies. It assumes business contexts without deep preemptive critique, and the date (24 мая 2024 г.) is in Russian format, potentially confusing.
+Evaluation of Response C
+
+What it does well: It follows the basic structure with sections, provides descriptions, rules, examples, pros/cons (though brief), a simple comparative table, and real references. Conclusions include recommendations based on complexity. The report is straightforward and covers all frameworks.
+
+What it does poorly: Descriptions for PECRA, OSCAR, and TAG are incomplete (e.g., PECRA lacks full rules and example; TAG is called "похож на APE" without depth). Pros/cons are very brief and not always balanced. The date is set in the future (2026-01-20), which is unrealistic and could undermine credibility. No confirmation of internal structure use, and the table is basic without deep comparative characteristics.
+Evaluation of Response D
+
+What it does well: Extremely detailed and structured, with subsections for each framework including explicit pros/cons, rules, and high-quality examples. The comparative table is comprehensive with criteria like component count and flexibility. Conclusions provide in-depth comparison and tailored recommendations (e.g., standardization steps). References are real, with access dates, adding rigor. It confirms internal structure use and preempts criticism by being thorough.
+
+What it does poorly: The length might be overwhelming, potentially reducing readability. Some references are Medium articles, which are less formal, though still real. It assumes a specific author name placeholder, which could be seen as incomplete.
+Evaluation of Response E
+
+What it does well: Confirms internal structure with a note on possible adjustments, offering a highly detailed report with templates, examples, and a rich comparative table including multiple criteria (e.g., focus on business value). Recommendations are practical, with implementation steps and suggestions for customization. It addresses potential criticisms by offering follow-up options. References are real and authoritative (e.g., OpenAI, Microsoft).
+
+What it does poorly: The introduction includes assumptions that might overstep without user confirmation, as per the internal process (it asks for confirmation but doesn't wait). Some sections are lengthy, and the date isn't specified, making it less formal.
+Evaluation of Response F
+
+What it does well: Uses a unique table format for each framework, making it visually structured and easy to scan. It includes pros/cons, rules, examples, a comparative table with scenarios, and conclusions with phased implementation recommendations. References appear real, though some are dated in the future (2026), and it confirms internal structure.
+
+What it does poorly: The future date (20 января 2026 г.) is odd and potentially erroneous. Descriptions are concise but sometimes too brief, lacking depth in rules or examples. The comparative table integrates pros/cons but could be more quantitative. Some sources (e.g., Medium links) might not be the most authoritative.
+Evaluation of Response G
+
+What it does well: Confirms internal structure and delivers a clean, consistent report with uniform examples (all on code analysis, aiding comparison). Pros/cons are explicit, the table includes complexity and scenarios, and conclusions provide clear, role-based recommendations. References are real and well-cited.
+
+What it does poorly: The report date is placeholder "[Текущая Дата]", which is incomplete. While detailed, it doesn't preempt much criticism (e.g., no discussion of token limits or LLM performance). The table is solid but could include more criteria like flexibility.
+Evaluation of Response H
+
+What it does well: Follows the basic structure with sections, brief descriptions, rules, examples, pros/cons, a simple table, and some references. Conclusions include recommendations, and it's concise for quick reading.
+
+What it does poorly: Lacks confirmation of internal structure use. Descriptions and pros/cons are very brief and superficial (e.g., no deep analysis). Examples are generic and not IT-specific. The table is minimalistic and lacks depth in comparative characteristics. References include potentially non-real or broken links (e.g., Notion.so link looks fabricated), and the date note (05.2024) is vague.
+
+FINAL RANKING:
+
+    Response D
+    Response E
+    Response A
+    Response B
+    Response G
+    Response F
+    Response C
+    Response H
+
+Extracted Ranking:
+
+    Response D
+    Response E
+    Response A
+    Response B
+    Response G
+    Response F
+    Response C
+    Response H
+
+# **qwen3-30b-a3b**
+
+Response A:
+
+    Well: Provides a structured report with clear sections, basic framework descriptions, and a simple comparison table. Examples are task-specific (e.g., documentation, code generation).
+    Poorly: Examples are generic and could be more technically detailed. The table lacks nuanced criteria (e.g., token efficiency, adaptability to non-IT tasks).
+
+Response B:
+
+    Well: Clear alignment with IT roles (DevOps, QA, PM), practical examples for troubleshooting and documentation. Comparison table includes token costs and business vs. technical applicability.
+    Poorly: Overly concise analysis for frameworks like IEEI and PECRA, missing depth in how they handle specific IT use cases (e.g., API migrations).
+
+Response C:
+
+    Well: Uses a consistent problem-solution template for all frameworks. Examples are straightforward and relevant to common IT tasks (e.g., code optimization).
+    Poorly: The 2026 date is anachronistic. The comparison table lacks metrics like scalability or adaptability.
+
+Response D:
+
+    Well: Detailed breakdown of each framework with explicit rules, balanced pros/cons, and actionable recommendations (e.g., pilot phases). Sources are credible and up-to-date.
+    Poorly: The examples are repetitive (all focus on documentation/code analysis). The "minimally structured" critique is vague.
+
+Response E:
+
+    Well: Comprehensive, with a 3-step example template for all frameworks. The table is rich in criteria (context, audience, business alignment). Conclusion includes a phased implementation plan.
+    Poorly: Overly verbose in the main body; some technical jargon (e.g., "boilerplate code") may reduce accessibility for non-technical stakeholders.
+
+Response F:
+
+    Well: Uses real-world IT scenarios (e.g., code audits) for all examples. The table compares 5+ criteria (e.g., "audience consideration," "coherent narratives"). Sources are authoritative (OpenAI, Medium, GitHub).
+    Poorly: The 2026 date is likely incorrect. The "strategic planning" focus for OSCAR oversimplifies its use cases.
+
+Response G:
+
+    Well: Structured for immediate adoption (e.g., "start with RTF for beginners"). Includes practical metrics like token efficiency in the table.
+    Poorly: English-heavy examples may not align with the user’s request for a Russian-language report. Weak analysis of IEEI’s benefits in data parsing.
+
+Response H:
+
+    Well: Clear, concise descriptions of each framework. The table is easy to digest but lacks depth. Examples are task-aligned (e.g., "summarize for executives").
+    Poorly: Missing analysis of how frameworks handle non-IT tasks (e.g., marketing). Weak linkage to long-term strategic goals.
+
+FINAL RANKING:
+
+    Response F
+    Response E
+    Response D
+    Response B
+    Response A
+    Response C
+    Response G
+    Response H
+
+Extracted Ranking:
+
+    Response F
+    Response E
+    Response D
+    Response B
+    Response A
+    Response C
+    Response G
+    Response H
