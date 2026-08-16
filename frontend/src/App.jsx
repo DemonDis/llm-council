@@ -280,6 +280,7 @@ function App() {
         isLoading={isLoading}
         mode={mode}
         onModeChange={setMode}
+        roles={envConfig?.roles}
       />
       {showSettings && (
         <Settings

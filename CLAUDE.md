@@ -8,7 +8,7 @@ LLM Council — это трёхэтапная система обсуждени�
 
 Поддерживаются два режима работы (переключаются в UI, параметр `mode` в запросе):
 - **`ensemble` (по умолчанию) — «Битва моделей»**: один вопрос отправляется разным моделям из `COUNCIL_MODELS`.
-- **`roleplay` — «Ролевой мозговой штурм»**: вопрос отправляется пяти ролям (`COUNCIL_ROLES`) в одной модели (`ROLEPLAY_MODEL`). Каждая роль получает свой системный промпт.
+- **`roleplay` — «Ролевой мозговой штурм»**: вопрос отправляется ролям из `roles.json` (например, цифровым личностям коллег и персонажам вроде Рика Санчеса) в одной модели (`ROLEPLAY_MODEL`). Каждая роль получает свой системный промпт.
 
 ## Архитектура
 
@@ -18,7 +18,8 @@ LLM Council — это трёхэтапная система обсуждени�
 - Содержит `COUNCIL_MODELS` (список идентификаторов моделей OpenRouter)
 - Содержит `CHAIRMAN_MODEL` (модель, которая синтезирует итоговый ответ) и `ROLEPLAY_MODEL` (модель для ролевого режима)
 - Содержит `TITLE_MODEL` (модель для генерации заголовков разговоров; по умолчанию = `CHAIRMAN_MODEL`)
-- Читает переменные окружения из `.env`: `OPENROUTER_API_KEY`, `OPENROUTER_API_URL`, `COUNCIL_MODELS`, `CHAIRMAN_MODEL`, `ROLEPLAY_MODEL`, `TITLE_MODEL`, `DATA_DIR`
+- Читает переменные окружения из `.env`: `OPENROUTER_API_KEY`, `OPENROUTER_API_URL`, `COUNCIL_MODELS`, `CHAIRMAN_MODEL`, `ROLEPLAY_MODEL`, `TITLE_MODEL`, `DATA_DIR`, `COUNCIL_ROLES_FILE`
+- `COUNCIL_ROLES` (роли для ролевого режима) загружается из `roles.json` в корне проекта через `load_council_roles()`; ключи, начинающиеся с `_`, игнорируются (заметки); при отсутствии/пустом файле — встроенные `DEFAULT_COUNCIL_ROLES`
 - Бэкенд работает на **порту 8001** (НЕ 8000 — у пользователя другое приложение на 8000)
 
 **`openrouter.py`**
@@ -29,9 +30,9 @@ LLM Council — это трёхэтапная система обсуждени�
 - Изящная деградация: возвращает None при сбое и продолжает работу с успешными ответами
 
 **`council.py`** — ядро логики
-- `COUNCIL_ROLES`: словарь ролей для ролевого режима (Скептик, Визионер, Человек со стороны, Исполнитель, Проверяющий факты)
 - `MODE_ENSEMBLE` / `MODE_ROLEPLAY`: константы режимов
 - `get_display_name()`: возвращает имя для отображения — роль (если есть) или модель
+- `COUNCIL_ROLES` импортируется из `.config` (определён в `roles.json` / `DEFAULT_COUNCIL_ROLES`)
 - `stage1_collect_responses(user_query, mode, api_key=None, api_url=None)`:
   - `stage1_collect_ensemble()`: параллельные запросы ко всем моделям совета (одинаковый промпт)
   - `stage1_collect_roleplay()`: параллельные запросы к `ROLEPLAY_MODEL`, каждая роль со своим системным промптом
@@ -58,7 +59,7 @@ LLM Council — это трёхэтапная система обсуждени�
 
 **`main.py`**
 - FastAPI-приложение с CORS для localhost:5173 и localhost:3000
-- `GET /api/config` → `{api_key_configured, api_url_configured, api_url}` (ключ никогда не возвращается)
+- `GET /api/config` → `{api_key_configured, api_url_configured, api_url, roles}` (ключ никогда не возвращается; `roles` — список имён ролей из `roles.json` для показа в UI)
 - `GET /api/conversations` / `POST /api/conversations` (принимает `device_id`; `device_ip` берётся из IP клиента) / `GET /api/conversations/{id}`
 - `DELETE /api/conversations/{id}?device_id=...`: удаление только «своего» разговора (чужой → 403; старые разговоры без device_id удалять можно)
 - `POST /api/conversations/{id}/message` и `/message/stream` — принимают `SendMessageRequest`: `content`, `mode` (по умолчанию `ensemble`), `api_key`, `api_url`, `device_id`

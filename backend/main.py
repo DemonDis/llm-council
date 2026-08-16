@@ -10,7 +10,7 @@ import json
 import asyncio
 
 from . import storage
-from .config import OPENROUTER_API_KEY, OPENROUTER_API_URL
+from .config import OPENROUTER_API_KEY, OPENROUTER_API_URL, COUNCIL_ROLES
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
 
 app = FastAPI(title="LLM Council API")
@@ -72,6 +72,7 @@ async def get_config():
         "api_key_configured": bool(OPENROUTER_API_KEY),
         "api_url_configured": bool(OPENROUTER_API_URL),
         "api_url": OPENROUTER_API_URL or "",
+        "roles": list(COUNCIL_ROLES.keys()),
     }
 
 

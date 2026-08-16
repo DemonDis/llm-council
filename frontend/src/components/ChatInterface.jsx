@@ -7,9 +7,13 @@ import './ChatInterface.css';
 
 const MODES = [
   { value: 'ensemble', label: 'Битва моделей', description: 'Один вопрос — разным моделям' },
-  // { value: 'roleplay', label: 'Ролевой мозговой штурм', description: 'Роли: Скептик, Визионер, Исполнитель и др.' },
-  { value: 'roleplay', label: 'Ролевой мозговой штурм', description: 'Роли: Роман, Наталья, Костантин и др.' },
+  { value: 'roleplay', label: 'Ролевой мозговой штурм', description: null },
 ];
+
+function roleplayDescription(roles) {
+  if (!roles || roles.length === 0) return 'Роли: см. roles.json';
+  return `Роли: ${roles.join(', ')}`;
+}
 
 const LOADING_TEXTS = {
   stage1: {
@@ -29,6 +33,7 @@ export default function ChatInterface({
   isLoading,
   mode,
   onModeChange,
+  roles,
 }) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -148,7 +153,7 @@ export default function ChatInterface({
             className={`mode-button ${mode === m.value ? 'active' : ''}`}
             onClick={() => onModeChange(m.value)}
             disabled={isLoading}
-            title={m.description}
+            title={m.value === 'roleplay' ? roleplayDescription(roles) : m.description}
           >
             {m.label}
           </button>
