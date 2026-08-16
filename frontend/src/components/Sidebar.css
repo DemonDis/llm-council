@@ -66,10 +66,40 @@
   border: 1px solid #4a90e2;
 }
 
+.conversation-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .conversation-title {
   color: #333;
   font-size: 14px;
   margin-bottom: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.conversation-delete {
+  background: none;
+  border: none;
+  color: #bbb;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  visibility: hidden;
+  border-radius: 4px;
+}
+
+.conversation-item:hover .conversation-delete {
+  visibility: visible;
+}
+
+.conversation-delete:hover {
+  color: #c0392b;
+  background: #fdf3f3;
 }
 
 .conversation-meta {

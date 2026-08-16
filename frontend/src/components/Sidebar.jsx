@@ -4,10 +4,20 @@ import './Sidebar.css';
 export default function Sidebar({
   conversations,
   currentConversationId,
+  deviceId,
   onSelectConversation,
   onNewConversation,
+  onDeleteConversation,
   onOpenSettings,
 }) {
+  const getDeviceLabel = (conv) => {
+    if (conv.device_id === deviceId) return 'С этого компьютера';
+    if (conv.device_name) return conv.device_name;
+    return 'Другой компьютер';
+  };
+
+  const isOwn = (conv) => conv.device_id === deviceId || !conv.device_id;
+
   return (
     <div className="sidebar">
       <div className="sidebar-header">
@@ -29,11 +39,26 @@ export default function Sidebar({
               }`}
               onClick={() => onSelectConversation(conv.id)}
             >
-              <div className="conversation-title">
-                {conv.title || 'Новый разговор'}
+              <div className="conversation-row">
+                <div className="conversation-title">
+                  {conv.title || 'Новый разговор'}
+                </div>
+                {isOwn(conv) && (
+                  <button
+                    className="conversation-delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteConversation(conv.id);
+                    }}
+                    title="Удалить разговор"
+                    aria-label="Удалить разговор"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
               <div className="conversation-meta">
-                {conv.message_count} сообщений
+                {conv.message_count} сообщений · {getDeviceLabel(conv)}
               </div>
             </div>
           ))

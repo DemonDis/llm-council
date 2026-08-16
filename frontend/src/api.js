@@ -17,29 +17,48 @@ export const api = {
   },
 
   /**
+   * Create a new conversation.
+   * @param {object} device - Optional { device_id, device_name } of the current browser
+   */
+  async createConversation(device = {}) {
+    const response = await fetch(`${API_BASE}/api/conversations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(device),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to create conversation');
+    }
+    return response.json();
+  },
+
+  /**
+   * Delete a conversation (only allowed from the device that created it).
+   * @param {string} conversationId - The conversation ID
+   * @param {string} deviceId - The current device ID
+   */
+  async deleteConversation(conversationId, deviceId) {
+    const response = await fetch(
+      `${API_BASE}/api/conversations/${conversationId}?device_id=${encodeURIComponent(deviceId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    if (!response.ok) {
+      throw new Error('Failed to delete conversation');
+    }
+    return response.json();
+  },
+
+  /**
    * List all conversations.
    */
   async listConversations() {
     const response = await fetch(`${API_BASE}/api/conversations`);
     if (!response.ok) {
       throw new Error('Failed to list conversations');
-    }
-    return response.json();
-  },
-
-  /**
-   * Create a new conversation.
-   */
-  async createConversation() {
-    const response = await fetch(`${API_BASE}/api/conversations`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({}),
-    });
-    if (!response.ok) {
-      throw new Error('Failed to create conversation');
     }
     return response.json();
   },
@@ -62,9 +81,9 @@ export const api = {
    * @param {string} conversationId - The conversation ID
    * @param {string} content - The message content
    * @param {string} mode - The council mode ('ensemble' or 'roleplay')
-   * @param {object} credentials - Optional { apiKey, apiUrl } from browser settings
+   * @param {object} extras - Optional extra fields for the body: { api_key, api_url, device_id, device_name }
    */
-  async sendMessage(conversationId, content, mode = 'ensemble', credentials = {}) {
+  async sendMessage(conversationId, content, mode = 'ensemble', extras = {}) {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/message`,
       {
@@ -72,7 +91,7 @@ export const api = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content, mode, ...credentials }),
+        body: JSON.stringify({ content, mode, ...extras }),
       }
     );
     if (!response.ok) {
@@ -86,11 +105,11 @@ export const api = {
    * @param {string} conversationId - The conversation ID
    * @param {string} content - The message content
    * @param {string} mode - The council mode ('ensemble' or 'roleplay')
-   * @param {object} credentials - Optional { apiKey, apiUrl } from browser settings
+   * @param {object} extras - Optional extra fields for the body: { api_key, api_url, device_id, device_name }
    * @param {function} onEvent - Callback function for each event: (eventType, data) => void
    * @returns {Promise<void>}
    */
-  async sendMessageStream(conversationId, content, mode, credentials, onEvent) {
+  async sendMessageStream(conversationId, content, mode, extras, onEvent) {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/message/stream`,
       {
@@ -98,7 +117,7 @@ export const api = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content, mode, ...credentials }),
+        body: JSON.stringify({ content, mode, ...extras }),
       }
     );
 

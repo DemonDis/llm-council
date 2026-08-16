@@ -17,12 +17,14 @@ LLM Council — это трёхэтапная система обсуждени�
 **`config.py`**
 - Содержит `COUNCIL_MODELS` (список идентификаторов моделей OpenRouter)
 - Содержит `CHAIRMAN_MODEL` (модель, которая синтезирует итоговый ответ) и `ROLEPLAY_MODEL` (модель для ролевого режима)
-- Читает переменные окружения из `.env`: `OPENROUTER_API_KEY`, `OPENROUTER_API_URL`, `COUNCIL_MODELS`, `CHAIRMAN_MODEL`, `ROLEPLAY_MODEL`, `DATA_DIR`
+- Содержит `TITLE_MODEL` (модель для генерации заголовков разговоров; по умолчанию = `CHAIRMAN_MODEL`)
+- Читает переменные окружения из `.env`: `OPENROUTER_API_KEY`, `OPENROUTER_API_URL`, `COUNCIL_MODELS`, `CHAIRMAN_MODEL`, `ROLEPLAY_MODEL`, `TITLE_MODEL`, `DATA_DIR`
 - Бэкенд работает на **порту 8001** (НЕ 8000 — у пользователя другое приложение на 8000)
 
 **`openrouter.py`**
-- `query_model()`: одиночный асинхронный запрос к модели
-- `query_models_parallel()`: параллельные запросы через `asyncio.gather()`
+- `query_model(model, messages, timeout, api_key=None, api_url=None)`: одиночный асинхронный запрос к модели; переданные `api_key`/`api_url` переопределяют значения из `.env`
+- `query_models_parallel(models, messages, api_key=None, api_url=None)`: параллельные запросы через `asyncio.gather()`
+- `DEFAULT_OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"` — используется, если URL не задан ни в `.env`, ни в запросе
 - Возвращает словарь с ключами 'content' и опциональным 'reasoning_details'
 - Изящная деградация: возвращает None при сбое и продолжает работу с успешными ответами
 
@@ -30,31 +32,37 @@ LLM Council — это трёхэтапная система обсуждени�
 - `COUNCIL_ROLES`: словарь ролей для ролевого режима (Скептик, Визионер, Человек со стороны, Исполнитель, Проверяющий факты)
 - `MODE_ENSEMBLE` / `MODE_ROLEPLAY`: константы режимов
 - `get_display_name()`: возвращает имя для отображения — роль (если есть) или модель
-- `stage1_collect_responses(user_query, mode)`:
+- `stage1_collect_responses(user_query, mode, api_key=None, api_url=None)`:
   - `stage1_collect_ensemble()`: параллельные запросы ко всем моделям совета (одинаковый промпт)
   - `stage1_collect_roleplay()`: параллельные запросы к `ROLEPLAY_MODEL`, каждая роль со своим системным промптом
-- `stage2_collect_rankings(user_query, stage1_results, mode)`:
+- `stage2_collect_rankings(user_query, stage1_results, mode, api_key=None, api_url=None)`:
   - Анонимизирует ответы как "Response A, B, C и т.д."
   - Создаёт сопоставление `label_to_model` для деанонимизации (в ролевом режиме — на роли)
   - В ролевом режиме каждая роль (со своим системным промптом) оценивает ответы остальных
   - Просит модели оценить и проранжировать (со строгими требованиями к формату)
   - Возвращает кортеж: (список_рейтингов, словарь_label_to_model)
   - Каждый рейтинг включает и сырой текст, и список `parsed_ranking`
-- `stage3_synthesize_final(user_query, stage1_results, stage2_results, mode)`: председатель синтезирует ответ из всех ответов и рейтингов (разные промпты для разных режимов)
+- `stage3_synthesize_final(user_query, stage1_results, stage2_results, mode, api_key=None, api_url=None)`: председатель синтезирует ответ из всех ответов и рейтингов (разные промпты для разных режимов)
+- `generate_conversation_title(user_query, api_key=None, api_url=None)`: короткий заголовок через `TITLE_MODEL` (таймаут 30 c)
+- `run_full_council(user_query, mode, api_key=None, api_url=None)`: полный трёхэтапный процесс
 - `parse_ranking_from_text()`: извлекает секцию "FINAL RANKING:", обрабатывает и нумерованные списки, и обычный формат
 - `calculate_aggregate_rankings()`: вычисляет среднюю позицию по всем взаимным оценкам
 
 **`storage.py`**
 - JSON-хранилище разговоров в `data/conversations/`
-- Каждый разговор: `{id, created_at, messages[]}`
+- Каждый разговор: `{id, created_at, title, device_id, device_name, messages[]}`
+- `device_id`/`device_name` — с какого устройства/компьютера создан разговор (проставляются при создании; `set_device_info()` заполняет их у старых разговоров при первом сообщении с нового фронтенда)
+- `delete_conversation()`: удаление файла разговора
 - Сообщения ассистента содержат: `{role, stage1, stage2, stage3}`
 - Важно: метаданные (label_to_model, aggregate_rankings) НЕ сохраняются в хранилище, только возвращаются через API
 
 **`main.py`**
 - FastAPI-приложение с CORS для localhost:5173 и localhost:3000
-- POST `/api/conversations/{id}/message` возвращает метаданные помимо этапов
-- `SendMessageRequest` принимает необязательный параметр `mode` (по умолчанию `ensemble`)
-- Метаданные включают: режим, сопоставление label_to_model и агрегированные рейтинги
+- `GET /api/config` → `{api_key_configured, api_url_configured, api_url}` (ключ никогда не возвращается)
+- `GET /api/conversations` / `POST /api/conversations` (принимает `device_id`, `device_name`) / `GET /api/conversations/{id}`
+- `DELETE /api/conversations/{id}?device_id=...`: удаление только «своего» разговора (чужой → 403; старые разговоры без device_id удалять можно)
+- `POST /api/conversations/{id}/message` и `/message/stream` — принимают `SendMessageRequest`: `content`, `mode` (по умолчанию `ensemble`), `api_key`, `api_url`, `device_id`, `device_name`
+- Метаданные (возвращаются с сообщением) включают: режим, сопоставление label_to_model и агрегированные рейтинги
 
 ### Структура фронтенда (`frontend/src/`)
 
@@ -62,7 +70,23 @@ LLM Council — это трёхэтапная система обсуждени�
 - Основная оркестрация: управляет списком разговоров и текущим разговором
 - Обрабатывает отправку сообщений и хранение метаданных
 - Хранит выбранный режим (`mode`) и передаёт его в `api.sendMessageStream`
+- Управляет настройками: `settings` (apiKey, apiUrl, deviceName) из localStorage и `envConfig` с `GET /api/config`
+- Генерирует `device_id` (UUID) в localStorage (`llm_council_device_id`) — идентификатор компьютера/браузера
+- Передаёт в запросы: `api_key`/`api_url` (приоритет над .env) и `device_id`/`device_name`
+- Удаляет разговоры через `handleDeleteConversation` (с подтверждением)
 - Важно: метаданные хранятся в состоянии UI для отображения, но не сохраняются в JSON бэкенда
+
+**`components/Sidebar.jsx`**
+- Список разговоров; у каждого подпись устройства: «С этого компьютера» (свой) или имя устройства владельца
+- Кнопка удаления «×» (при наведении) только для своих разговоров
+- Кнопка «Настройки API» внизу
+
+**`components/Settings.jsx`** (+ `Settings.css`)
+- Модалка настроек API: ключ (показ/скрытие/копирование) и URL
+- Если значения заданы в `.env` — они используются при пустых полях; введённое значение переопределяет их
+- Кнопка «Сбросить к .env» (видна, если есть сохранённые значения) — удаляет их из localStorage
+- Поле «Имя этого устройства» — для человекочитаемой метки компьютера в списке разговоров
+- Всё хранится только в localStorage (ключ `llm_council_settings`)
 
 **`components/ChatInterface.jsx`**
 - Многострочное textarea (3 строки, изменяемый размер)
@@ -137,7 +161,16 @@ LLM Council — это трёхэтапная система обсуждени�
 Все компоненты ReactMarkdown должны быть обёрнуты в `<div className="markdown-content">` для корректных отступов. Этот класс определён глобально в `index.css`.
 
 ### Конфигурация моделей
-Модели настраиваются через `.env` (переменные `COUNCIL_MODELS`, `CHAIRMAN_MODEL` и `ROLEPLAY_MODEL`). Председатель может совпадать с членами совета или отличаться от них. Текущее значение по умолчанию — Gemini в роли председателя и модели ролей (по предпочтению пользователя).
+Модели настраиваются через `.env` (переменные `COUNCIL_MODELS`, `CHAIRMAN_MODEL`, `ROLEPLAY_MODEL`, `TITLE_MODEL`). Председатель может совпадать с членами совета или отличаться от них. `TITLE_MODEL` по умолчанию = `CHAIRMAN_MODEL`. Текущее значение по умолчанию — Gemini в роли председателя и моделей ролей (по предпочтению пользователя).
+
+### Настройки API и идентификация устройства (фронтенд)
+- Ключ и URL API можно вводить в UI (модалка «Настройки API»), они хранятся в localStorage (`llm_council_settings` = `{apiKey, apiUrl, deviceName}`).
+- Приоритет: введённое значение → `.env` → `DEFAULT_OPENROUTER_URL`. Пустое поле = значение из `.env` не переопределяется (параметр просто не отправляется в запрос).
+- Кнопка «Сбросить к .env» очищает apiKey/apiUrl из localStorage (deviceName при этом сохраняется).
+- `device_id` (UUID) генерируется один раз и хранится в localStorage (`llm_council_device_id`). Он помечает разговоры в бэкенде и определяет, какие из них можно удалить с этого компьютера.
+
+### Парсинг SSE-потока
+Потоковый эндпоинт отдаёт Server-Sent Events, разделённые `\n\n`. Крупные события (stage1_complete ~40 КБ, stage2_complete ~65 КБ) могут прийти несколькими чанками, поэтому `api.js` накапливает данные в буфер и парсит события только по полному разделителю, декодируя с `stream: true` (чтобы не разрезать многобайтовые символы).
 
 ## Частые проблемы
 
@@ -145,11 +178,11 @@ LLM Council — это трёхэтапная система обсуждени�
 2. **Проблемы CORS**: фронтенд должен соответствовать разрешённым источникам в CORS-мидлваре `main.py`
 3. **Сбои парсинга рейтингов**: если модели не следуют формату, запасной regex извлекает любые паттерны "Response X" по порядку
 4. **Отсутствующие метаданные**: метаданные эфемерны (не сохраняются), доступны только в ответах API
+5. **Бэкенд не перезапущен**: после правок `backend/` перезапускайте `python -m backend.main` (uvicorn не хот-релоадится без `--reload`)
 
 ## Идеи для будущих улучшений
 
 - Настройка совета/председателя через UI вместо файла конфигурации
-- Потоковые ответы вместо пакетной загрузки
 - Экспорт разговоров в markdown/PDF
 - Аналитика производительности моделей с течением времени
 - Пользовательские критерии ранжирования (не только точность/глубина)

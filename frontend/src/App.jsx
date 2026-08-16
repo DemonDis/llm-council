@@ -6,14 +6,24 @@ import { api } from './api';
 import './App.css';
 
 const SETTINGS_STORAGE_KEY = 'llm_council_settings';
+const DEVICE_ID_STORAGE_KEY = 'llm_council_device_id';
 
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { apiKey: '', apiUrl: '' };
+    return raw ? JSON.parse(raw) : { apiKey: '', apiUrl: '', deviceName: '' };
   } catch (e) {
-    return { apiKey: '', apiUrl: '' };
+    return { apiKey: '', apiUrl: '', deviceName: '' };
   }
+}
+
+function loadDeviceId() {
+  let id = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_STORAGE_KEY, id);
+  }
+  return id;
 }
 
 function App() {
@@ -25,6 +35,7 @@ function App() {
   const [settings, setSettings] = useState(loadSettings);
   const [envConfig, setEnvConfig] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [deviceId] = useState(loadDeviceId);
 
   // Load conversations and backend config on mount
   useEffect(() => {
@@ -62,9 +73,18 @@ function App() {
 
   const handleNewConversation = async () => {
     try {
-      const newConv = await api.createConversation();
+      const newConv = await api.createConversation({
+        device_id: deviceId,
+        device_name: settings.deviceName,
+      });
       setConversations([
-        { id: newConv.id, created_at: newConv.created_at, message_count: 0 },
+        {
+          id: newConv.id,
+          created_at: newConv.created_at,
+          message_count: 0,
+          device_id: deviceId,
+          device_name: settings.deviceName,
+        },
         ...conversations,
       ]);
       setCurrentConversationId(newConv.id);
@@ -77,14 +97,31 @@ function App() {
     setCurrentConversationId(id);
   };
 
+  const handleDeleteConversation = async (id) => {
+    if (!window.confirm('Удалить этот разговор?')) return;
+    try {
+      await api.deleteConversation(id, deviceId);
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (currentConversationId === id) {
+        setCurrentConversationId(null);
+        setCurrentConversation(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+    }
+  };
+
   const handleSaveSettings = (newSettings) => {
     setSettings(newSettings);
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
   };
 
   const handleClearSettings = () => {
-    setSettings({ apiKey: '', apiUrl: '' });
-    localStorage.removeItem(SETTINGS_STORAGE_KEY);
+    setSettings({ apiKey: '', apiUrl: '', deviceName: settings.deviceName });
+    localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({ apiKey: '', apiUrl: '', deviceName: settings.deviceName })
+    );
   };
 
   // Локальные значения из настроек имеют приоритет над .env.
@@ -92,6 +129,8 @@ function App() {
   const credentials = {
     ...(settings.apiKey ? { api_key: settings.apiKey } : {}),
     ...(settings.apiUrl ? { api_url: settings.apiUrl } : {}),
+    device_id: deviceId,
+    ...(settings.deviceName ? { device_name: settings.deviceName } : {}),
   };
 
   const handleSendMessage = async (content) => {
@@ -237,8 +276,10 @@ function App() {
       <Sidebar
         conversations={conversations}
         currentConversationId={currentConversationId}
+        deviceId={deviceId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
+        onDeleteConversation={handleDeleteConversation}
         onOpenSettings={() => setShowSettings(true)}
       />
       <ChatInterface
