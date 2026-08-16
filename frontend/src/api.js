@@ -92,22 +92,31 @@ export const api = {
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let buffer = '';
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
+      // Декодируем с stream:true, чтобы не разрезать многобайтовые символы
+      buffer += decoder.decode(value, { stream: true });
 
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          try {
-            const event = JSON.parse(data);
-            onEvent(event.type, event);
-          } catch (e) {
-            console.error('Failed to parse SSE event:', e);
+      // События разделяются пустой строкой (\n\n). Накапливаем данные,
+      // чтобы большие события (stage1_complete и т.п.), разрезанные на чанки, парсились целиком
+      let separator;
+      while ((separator = buffer.indexOf('\n\n')) !== -1) {
+        const rawEvent = buffer.slice(0, separator).trim();
+        buffer = buffer.slice(separator + 2);
+
+        for (const line of rawEvent.split('\n')) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            try {
+              const event = JSON.parse(data);
+              onEvent(event.type, event);
+            } catch (e) {
+              console.error('Failed to parse SSE event:', e);
+            }
           }
         }
       }
