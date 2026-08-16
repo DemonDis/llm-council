@@ -48,12 +48,18 @@ def get_display_name(result: Dict[str, Any]) -> str:
     return result.get('role') or result.get('model', 'Unknown')
 
 
-async def stage1_collect_ensemble(user_query: str) -> List[Dict[str, Any]]:
+async def stage1_collect_ensemble(
+    user_query: str,
+    api_key: str = None,
+    api_url: str = None
+) -> List[Dict[str, Any]]:
     """
     Этап 1 (режим «Битва моделей»): сбор индивидуальных ответов от всех моделей совета.
 
     Args:
         user_query: Вопрос пользователя
+        api_key: Ключ API (переопределяет ключ из .env, если передан)
+        api_url: URL API (переопределяет URL из .env, если передан)
 
     Returns:
         Список словарей с ключами 'model' и 'response'
@@ -61,7 +67,7 @@ async def stage1_collect_ensemble(user_query: str) -> List[Dict[str, Any]]:
     messages = [{"role": "user", "content": user_query}]
 
     # Параллельный запрос ко всем моделям
-    responses = await query_models_parallel(COUNCIL_MODELS, messages)
+    responses = await query_models_parallel(COUNCIL_MODELS, messages, api_key=api_key, api_url=api_url)
 
     # Формируем результаты
     stage1_results = []
@@ -75,7 +81,11 @@ async def stage1_collect_ensemble(user_query: str) -> List[Dict[str, Any]]:
     return stage1_results
 
 
-async def stage1_collect_roleplay(user_query: str) -> List[Dict[str, Any]]:
+async def stage1_collect_roleplay(
+    user_query: str,
+    api_key: str = None,
+    api_url: str = None
+) -> List[Dict[str, Any]]:
     """
     Этап 1 (режим «Ролевой мозговой штурм»): сбор ответов от всех ролей в одной модели.
 
@@ -83,6 +93,8 @@ async def stage1_collect_roleplay(user_query: str) -> List[Dict[str, Any]]:
 
     Args:
         user_query: Вопрос пользователя
+        api_key: Ключ API (переопределяет ключ из .env, если передан)
+        api_url: URL API (переопределяет URL из .env, если передан)
 
     Returns:
         Список словарей с ключами 'model', 'role' и 'response'
@@ -92,7 +104,7 @@ async def stage1_collect_roleplay(user_query: str) -> List[Dict[str, Any]]:
         query_model(ROLEPLAY_MODEL, [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_query}
-        ])
+        ], api_key=api_key, api_url=api_url)
         for system_prompt in COUNCIL_ROLES.values()
     ]
 
@@ -112,26 +124,35 @@ async def stage1_collect_roleplay(user_query: str) -> List[Dict[str, Any]]:
     return stage1_results
 
 
-async def stage1_collect_responses(user_query: str, mode: str = MODE_ENSEMBLE) -> List[Dict[str, Any]]:
+async def stage1_collect_responses(
+    user_query: str,
+    mode: str = MODE_ENSEMBLE,
+    api_key: str = None,
+    api_url: str = None
+) -> List[Dict[str, Any]]:
     """
     Этап 1: сбор индивидуальных ответов.
 
     Args:
         user_query: Вопрос пользователя
         mode: Режим работы совета (ensemble или roleplay)
+        api_key: Ключ API (переопределяет ключ из .env, если передан)
+        api_url: URL API (переопределяет URL из .env, если передан)
 
     Returns:
         Список словарей с ответами
     """
     if mode == MODE_ROLEPLAY:
-        return await stage1_collect_roleplay(user_query)
-    return await stage1_collect_ensemble(user_query)
+        return await stage1_collect_roleplay(user_query, api_key=api_key, api_url=api_url)
+    return await stage1_collect_ensemble(user_query, api_key=api_key, api_url=api_url)
 
 
 async def stage2_collect_rankings(
     user_query: str,
     stage1_results: List[Dict[str, Any]],
-    mode: str = MODE_ENSEMBLE
+    mode: str = MODE_ENSEMBLE,
+    api_key: str = None,
+    api_url: str = None
 ) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
     """
     Этап 2: ранжирование анонимизированных ответов.
@@ -143,6 +164,8 @@ async def stage2_collect_rankings(
         user_query: Исходный запрос пользователя
         stage1_results: Результаты этапа 1
         mode: Режим работы совета (ensemble или roleplay)
+        api_key: Ключ API (переопределяет ключ из .env, если передан)
+        api_url: URL API (переопределяет URL из .env, если передан)
 
     Returns:
         Кортеж (список рейтингов, сопоставление меток и имён для отображения)
@@ -199,7 +222,7 @@ FINAL RANKING:
             query_model(ROLEPLAY_MODEL, [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": ranking_prompt}
-            ])
+            ], api_key=api_key, api_url=api_url)
             for system_prompt in COUNCIL_ROLES.values()
         ]
         responses = await asyncio.gather(*tasks)
@@ -223,7 +246,7 @@ FINAL RANKING:
     messages = [{"role": "user", "content": ranking_prompt}]
 
     # Получаем рейтинги от всех моделей совета параллельно
-    responses = await query_models_parallel(COUNCIL_MODELS, messages)
+    responses = await query_models_parallel(COUNCIL_MODELS, messages, api_key=api_key, api_url=api_url)
 
     # Формируем результаты
     stage2_results = []
@@ -244,7 +267,9 @@ async def stage3_synthesize_final(
     user_query: str,
     stage1_results: List[Dict[str, Any]],
     stage2_results: List[Dict[str, Any]],
-    mode: str = MODE_ENSEMBLE
+    mode: str = MODE_ENSEMBLE,
+    api_key: str = None,
+    api_url: str = None
 ) -> Dict[str, Any]:
     """
     Этап 3: председатель синтезирует итоговый ответ.
@@ -254,6 +279,8 @@ async def stage3_synthesize_final(
         stage1_results: Индивидуальные ответы с этапа 1
         stage2_results: Рейтинги с этапа 2
         mode: Режим работы совета (ensemble или roleplay)
+        api_key: Ключ API (переопределяет ключ из .env, если передан)
+        api_url: URL API (переопределяет URL из .env, если передан)
 
     Returns:
         Словарь с ключами 'model' и 'response'
@@ -307,7 +334,7 @@ async def stage3_synthesize_final(
     messages = [{"role": "user", "content": chairman_prompt}]
 
     # Запрашиваем модель председателя
-    response = await query_model(CHAIRMAN_MODEL, messages)
+    response = await query_model(CHAIRMAN_MODEL, messages, api_key=api_key, api_url=api_url)
 
     if response is None:
         # Запасной вариант, если председатель не ответил
@@ -403,12 +430,18 @@ def calculate_aggregate_rankings(
     return aggregate
 
 
-async def generate_conversation_title(user_query: str) -> str:
+async def generate_conversation_title(
+    user_query: str,
+    api_key: str = None,
+    api_url: str = None
+) -> str:
     """
     Генерация короткого заголовка разговора на основе первого сообщения пользователя.
 
     Args:
         user_query: Первое сообщение пользователя
+        api_key: Ключ API (переопределяет ключ из .env, если передан)
+        api_url: URL API (переопределяет URL из .env, если передан)
 
     Returns:
         Короткий заголовок (3-5 слов)
@@ -423,7 +456,7 @@ async def generate_conversation_title(user_query: str) -> str:
     messages = [{"role": "user", "content": title_prompt}]
 
     # Используем TITLE_MODEL для генерации заголовка (быстро и дёшево)
-    response = await query_model(TITLE_MODEL, messages, timeout=30.0)
+    response = await query_model(TITLE_MODEL, messages, timeout=30.0, api_key=api_key, api_url=api_url)
 
     if response is None:
         # Запасной вариант — стандартный заголовок
@@ -441,19 +474,26 @@ async def generate_conversation_title(user_query: str) -> str:
     return title
 
 
-async def run_full_council(user_query: str, mode: str = MODE_ENSEMBLE) -> Tuple[List, List, Dict, Dict]:
+async def run_full_council(
+    user_query: str,
+    mode: str = MODE_ENSEMBLE,
+    api_key: str = None,
+    api_url: str = None
+) -> Tuple[List, List, Dict, Dict]:
     """
     Запуск полного трёхэтапного процесса совета.
 
     Args:
         user_query: Вопрос пользователя
         mode: Режим работы совета (ensemble или roleplay)
+        api_key: Ключ API (переопределяет ключ из .env, если передан)
+        api_url: URL API (переопределяет URL из .env, если передан)
 
     Returns:
         Кортеж (результаты этапа 1, результаты этапа 2, результат этапа 3, метаданные)
     """
     # Этап 1: сбор индивидуальных ответов
-    stage1_results = await stage1_collect_responses(user_query, mode)
+    stage1_results = await stage1_collect_responses(user_query, mode, api_key=api_key, api_url=api_url)
 
     # Если ни один участник не ответил успешно, возвращаем ошибку
     if not stage1_results:
@@ -463,7 +503,9 @@ async def run_full_council(user_query: str, mode: str = MODE_ENSEMBLE) -> Tuple[
         }, {}
 
     # Этап 2: сбор рейтингов
-    stage2_results, label_to_model = await stage2_collect_rankings(user_query, stage1_results, mode)
+    stage2_results, label_to_model = await stage2_collect_rankings(
+        user_query, stage1_results, mode, api_key=api_key, api_url=api_url
+    )
 
     # Расчёт агрегированных рейтингов
     aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
@@ -473,7 +515,9 @@ async def run_full_council(user_query: str, mode: str = MODE_ENSEMBLE) -> Tuple[
         user_query,
         stage1_results,
         stage2_results,
-        mode
+        mode,
+        api_key=api_key,
+        api_url=api_url
     )
 
     # Формируем метаданные

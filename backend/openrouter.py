@@ -4,11 +4,16 @@ import httpx
 from typing import List, Dict, Any, Optional
 from .config import OPENROUTER_API_KEY, OPENROUTER_API_URL
 
+# Стандартный URL OpenRouter, используется, если не задан в .env и не передан с фронтенда
+DEFAULT_OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
 
 async def query_model(
     model: str,
     messages: List[Dict[str, str]],
-    timeout: float = 120.0
+    timeout: float = 120.0,
+    api_key: Optional[str] = None,
+    api_url: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
     """
     Запрос к одной модели через API OpenRouter.
@@ -17,12 +22,17 @@ async def query_model(
         model: Идентификатор модели OpenRouter (например, "openai/gpt-4o")
         messages: Список словарей сообщений с ключами 'role' и 'content'
         timeout: Тайм-аут запроса в секундах
+        api_key: Ключ API (переопределяет ключ из .env, если передан)
+        api_url: URL API (переопределяет URL из .env, если передан)
 
     Returns:
         Словарь ответа с ключами 'content' и опциональным 'reasoning_details', либо None при ошибке
     """
+    key = api_key or OPENROUTER_API_KEY
+    url = api_url or OPENROUTER_API_URL or DEFAULT_OPENROUTER_URL
+
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
     }
 
@@ -34,7 +44,7 @@ async def query_model(
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(
-                OPENROUTER_API_URL,
+                url,
                 headers=headers,
                 json=payload
             )
@@ -55,7 +65,9 @@ async def query_model(
 
 async def query_models_parallel(
     models: List[str],
-    messages: List[Dict[str, str]]
+    messages: List[Dict[str, str]],
+    api_key: Optional[str] = None,
+    api_url: Optional[str] = None
 ) -> Dict[str, Optional[Dict[str, Any]]]:
     """
     Параллельный запрос к нескольким моделям.
@@ -63,6 +75,8 @@ async def query_models_parallel(
     Args:
         models: Список идентификаторов моделей OpenRouter
         messages: Список словарей сообщений, отправляемых каждой модели
+        api_key: Ключ API (переопределяет ключ из .env, если передан)
+        api_url: URL API (переопределяет URL из .env, если передан)
 
     Returns:
         Словарь, сопоставляющий идентификатор модели со словарём ответа (или None при ошибке)
@@ -70,7 +84,7 @@ async def query_models_parallel(
     import asyncio
 
     # Создаём задачи для всех моделей
-    tasks = [query_model(model, messages) for model in models]
+    tasks = [query_model(model, messages, api_key=api_key, api_url=api_url) for model in models]
 
     # Ожидаем завершения всех
     responses = await asyncio.gather(*tasks)

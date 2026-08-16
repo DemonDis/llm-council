@@ -76,3 +76,25 @@
   color: #999;
   font-size: 12px;
 }
+
+.sidebar-footer {
+  padding: 12px 16px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.sidebar-footer .settings-btn {
+  width: 100%;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  color: #444;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.sidebar-footer .settings-btn:hover {
+  border-color: #4a90e2;
+  color: #4a90e2;
+}

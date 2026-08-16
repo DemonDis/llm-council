@@ -6,6 +6,17 @@ const API_BASE = 'http://localhost:8001';
 
 export const api = {
   /**
+   * Get backend config status (whether API key/URL are set in .env).
+   */
+  async getConfig() {
+    const response = await fetch(`${API_BASE}/api/config`);
+    if (!response.ok) {
+      throw new Error('Failed to get config');
+    }
+    return response.json();
+  },
+
+  /**
    * List all conversations.
    */
   async listConversations() {
@@ -48,8 +59,12 @@ export const api = {
 
   /**
    * Send a message in a conversation.
+   * @param {string} conversationId - The conversation ID
+   * @param {string} content - The message content
+   * @param {string} mode - The council mode ('ensemble' or 'roleplay')
+   * @param {object} credentials - Optional { apiKey, apiUrl } from browser settings
    */
-  async sendMessage(conversationId, content, mode = 'ensemble') {
+  async sendMessage(conversationId, content, mode = 'ensemble', credentials = {}) {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/message`,
       {
@@ -57,7 +72,7 @@ export const api = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content, mode }),
+        body: JSON.stringify({ content, mode, ...credentials }),
       }
     );
     if (!response.ok) {
@@ -71,10 +86,11 @@ export const api = {
    * @param {string} conversationId - The conversation ID
    * @param {string} content - The message content
    * @param {string} mode - The council mode ('ensemble' or 'roleplay')
+   * @param {object} credentials - Optional { apiKey, apiUrl } from browser settings
    * @param {function} onEvent - Callback function for each event: (eventType, data) => void
    * @returns {Promise<void>}
    */
-  async sendMessageStream(conversationId, content, mode, onEvent) {
+  async sendMessageStream(conversationId, content, mode, credentials, onEvent) {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/message/stream`,
       {
@@ -82,7 +98,7 @@ export const api = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content, mode }),
+        body: JSON.stringify({ content, mode, ...credentials }),
       }
     );
 
