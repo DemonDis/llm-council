@@ -1,13 +1,56 @@
 """Оркестрация трёхэтапного процесса LLM Council."""
 
 from typing import List, Dict, Any, Tuple
+import asyncio
 from .openrouter import query_models_parallel, query_model
-from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
+from .config import COUNCIL_MODELS, CHAIRMAN_MODEL, ROLEPLAY_MODEL
+
+# Режимы работы совета
+MODE_ENSEMBLE = "ensemble"    # Битва моделей: один вопрос разным моделям
+MODE_ROLEPLAY = "roleplay"    # Ролевой мозговой штурм: роли в одной модели
+
+# Роли для режима "Ролевой мозговой штурм"
+COUNCIL_ROLES = {
+    "Скептик": """Ты — Скептик. Твоя цель: Найти точки отказа и предотвратить проблемы.
+Ищи скрытые риски, слабые места, уязвимости и неучтенные факторы. 
+Ответь на вопросы: Что может пойти не так? Какой худший сценарий?""",
+
+    "Визионер": """Ты — Визионер. Твоя цель: Найти скрытые возможности и точки роста.
+Думай о 10х потенциале, расширении аудитории и новых рынках. 
+Ответь на вопрос: Что хорошего может из этого получиться и как это масштабировать?""",
+
+    "Человек со стороны": """Ты — Человек со стороны. Твоя цель: Увидеть привычные вещи под новым углом.
+Смотри свежим взглядом без знания индустрии. Задавай "глупые" и наивные вопросы. 
+Ответь на вопрос: Почему это делается именно так? Нет ли более простого пути?""",
+
+    "Исполнитель": """Ты — Исполнитель. Твоя цель: Довести задачи до результата.
+Превращай планы в действия. Фокус, действие, результат.
+Напиши четкий план действий (Задача 1, Задача 2, Задача 3) и расставь приоритеты.""",
+
+    "Проверяющий факты": """Ты — Проверяющий факты. Твоя цель: Отделить факты от предположений.
+Сомневайся и проверяй. 
+Задай вопросы: На чем основано это утверждение? Какие данные это подтверждают? Что мы принимаем на веру?"""
+}
 
 
-async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
+def get_display_name(result: Dict[str, Any]) -> str:
     """
-    Этап 1: сбор индивидуальных ответов от всех моделей совета.
+    Возвращает имя для отображения результата этапа.
+
+    В ролевом режиме это название роли, в режиме битвы моделей — идентификатор модели.
+
+    Args:
+        result: Элемент результата этапа (с ключами 'model' и, возможно, 'role')
+
+    Returns:
+        Имя для отображения
+    """
+    return result.get('role') or result.get('model', 'Unknown')
+
+
+async def stage1_collect_ensemble(user_query: str) -> List[Dict[str, Any]]:
+    """
+    Этап 1 (режим «Битва моделей»): сбор индивидуальных ответов от всех моделей совета.
 
     Args:
         user_query: Вопрос пользователя
@@ -32,26 +75,84 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
     return stage1_results
 
 
+async def stage1_collect_roleplay(user_query: str) -> List[Dict[str, Any]]:
+    """
+    Этап 1 (режим «Ролевой мозговой штурм»): сбор ответов от всех ролей в одной модели.
+
+    Каждая роль получает свой системный промпт и общий вопрос пользователя.
+
+    Args:
+        user_query: Вопрос пользователя
+
+    Returns:
+        Список словарей с ключами 'model', 'role' и 'response'
+    """
+    # Создаём задачи: для каждой роли свой системный промпт
+    tasks = [
+        query_model(ROLEPLAY_MODEL, [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_query}
+        ])
+        for system_prompt in COUNCIL_ROLES.values()
+    ]
+
+    # Параллельное ожидание ответов всех ролей
+    responses = await asyncio.gather(*tasks)
+
+    # Формируем результаты с привязкой к ролям
+    stage1_results = []
+    for role_name, response in zip(COUNCIL_ROLES.keys(), responses):
+        if response is not None:  # Включаем только успешные ответы
+            stage1_results.append({
+                "model": ROLEPLAY_MODEL,
+                "role": role_name,
+                "response": response.get('content', '')
+            })
+
+    return stage1_results
+
+
+async def stage1_collect_responses(user_query: str, mode: str = MODE_ENSEMBLE) -> List[Dict[str, Any]]:
+    """
+    Этап 1: сбор индивидуальных ответов.
+
+    Args:
+        user_query: Вопрос пользователя
+        mode: Режим работы совета (ensemble или roleplay)
+
+    Returns:
+        Список словарей с ответами
+    """
+    if mode == MODE_ROLEPLAY:
+        return await stage1_collect_roleplay(user_query)
+    return await stage1_collect_ensemble(user_query)
+
+
 async def stage2_collect_rankings(
     user_query: str,
-    stage1_results: List[Dict[str, Any]]
+    stage1_results: List[Dict[str, Any]],
+    mode: str = MODE_ENSEMBLE
 ) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
     """
-    Этап 2: каждая модель ранжирует анонимизированные ответы.
+    Этап 2: ранжирование анонимизированных ответов.
+
+    В режиме битвы моделей каждый член совета оценивает ответы остальных.
+    В ролевом режиме каждая роль (со своим системным промптом) оценивает ответы остальных ролей.
 
     Args:
         user_query: Исходный запрос пользователя
         stage1_results: Результаты этапа 1
+        mode: Режим работы совета (ensemble или roleplay)
 
     Returns:
-        Кортеж (список рейтингов, сопоставление меток и моделей)
+        Кортеж (список рейтингов, сопоставление меток и имён для отображения)
     """
     # Создаём анонимные метки для ответов (Response A, Response B и т.д.)
     labels = [chr(65 + i) for i in range(len(stage1_results))]  # A, B, C, ...
 
-    # Создаём сопоставление меток с названиями моделей
+    # Создаём сопоставление меток с именами для отображения (роль или модель)
     label_to_model = {
-        f"Response {label}": result['model']
+        f"Response {label}": get_display_name(result)
         for label, result in zip(labels, stage1_results)
     }
 
@@ -65,7 +166,7 @@ async def stage2_collect_rankings(
 
 Вопрос: {user_query}
 
-Вот ответы от разных моделей (анонимизированы):
+Вот ответы от разных участников (анонимизированы):
 
 {responses_text}
 
@@ -92,6 +193,33 @@ FINAL RANKING:
 
 Теперь предоставьте вашу оценку и рейтинг:"""
 
+    if mode == MODE_ROLEPLAY:
+        # Каждая роль со своим системным промптом оценивает ответы остальных
+        tasks = [
+            query_model(ROLEPLAY_MODEL, [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": ranking_prompt}
+            ])
+            for system_prompt in COUNCIL_ROLES.values()
+        ]
+        responses = await asyncio.gather(*tasks)
+
+        # Формируем результаты с привязкой к ролям
+        stage2_results = []
+        for role_name, response in zip(COUNCIL_ROLES.keys(), responses):
+            if response is not None:
+                full_text = response.get('content', '')
+                parsed = parse_ranking_from_text(full_text)
+                stage2_results.append({
+                    "model": ROLEPLAY_MODEL,
+                    "role": role_name,
+                    "ranking": full_text,
+                    "parsed_ranking": parsed
+                })
+
+        return stage2_results, label_to_model
+
+    # Режим битвы моделей: все члены совета оценивают ответы параллельно
     messages = [{"role": "user", "content": ranking_prompt}]
 
     # Получаем рейтинги от всех моделей совета параллельно
@@ -115,31 +243,51 @@ FINAL RANKING:
 async def stage3_synthesize_final(
     user_query: str,
     stage1_results: List[Dict[str, Any]],
-    stage2_results: List[Dict[str, Any]]
+    stage2_results: List[Dict[str, Any]],
+    mode: str = MODE_ENSEMBLE
 ) -> Dict[str, Any]:
     """
     Этап 3: председатель синтезирует итоговый ответ.
 
     Args:
         user_query: Исходный запрос пользователя
-        stage1_results: Индивидуальные ответы моделей с этапа 1
+        stage1_results: Индивидуальные ответы с этапа 1
         stage2_results: Рейтинги с этапа 2
+        mode: Режим работы совета (ensemble или roleplay)
 
     Returns:
         Словарь с ключами 'model' и 'response'
     """
     # Формируем полный контекст для председателя
     stage1_text = "\n\n".join([
-        f"Model: {result['model']}\nResponse: {result['response']}"
+        f"Участник: {get_display_name(result)}\nОтвет: {result['response']}"
         for result in stage1_results
     ])
 
     stage2_text = "\n\n".join([
-        f"Model: {result['model']}\nRanking: {result['ranking']}"
+        f"Участник: {get_display_name(result)}\nОценка: {result['ranking']}"
         for result in stage2_results
     ])
 
-    chairman_prompt = f"""Вы — Председатель Совета LLM. Несколько моделей ИИ предоставили ответы на вопрос пользователя, а затем проранжировали ответы друг друга.
+    if mode == MODE_ROLEPLAY:
+        chairman_prompt = f"""Ты — Председатель Совета ИИ. Твоя задача — изучить ответы экспертов (Скептика, Визионера, Исполнителя, Человека со стороны и Проверяющего факты) на запрос пользователя.
+Синтезируй их мнения в единое, взвешенное итоговое решение. Учти риски скептика, идеи визионера и шаги исполнителя.
+
+Исходный вопрос: {user_query}
+
+ЭТАП 1 — Ответы экспертов:
+{stage1_text}
+
+ЭТАП 2 — Взаимные рейтинги экспертов:
+{stage2_text}
+
+Учитывай также:
+- Взаимные рейтинги и то, что они говорят о качестве ответов
+- Любые закономерности согласия или разногласий
+
+Предоставь чёткий, хорошо обоснованный итоговый ответ, отражающий коллективную мудрость совета:"""
+    else:
+        chairman_prompt = f"""Вы — Председатель Совета LLM. Несколько моделей ИИ предоставили ответы на вопрос пользователя, а затем проранжировали ответы друг друга.
 
 Исходный вопрос: {user_query}
 
@@ -293,28 +441,29 @@ async def generate_conversation_title(user_query: str) -> str:
     return title
 
 
-async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
+async def run_full_council(user_query: str, mode: str = MODE_ENSEMBLE) -> Tuple[List, List, Dict, Dict]:
     """
     Запуск полного трёхэтапного процесса совета.
 
     Args:
         user_query: Вопрос пользователя
+        mode: Режим работы совета (ensemble или roleplay)
 
     Returns:
         Кортеж (результаты этапа 1, результаты этапа 2, результат этапа 3, метаданные)
     """
     # Этап 1: сбор индивидуальных ответов
-    stage1_results = await stage1_collect_responses(user_query)
+    stage1_results = await stage1_collect_responses(user_query, mode)
 
-    # Если ни одна модель не ответила успешно, возвращаем ошибку
+    # Если ни один участник не ответил успешно, возвращаем ошибку
     if not stage1_results:
         return [], [], {
             "model": "error",
-            "response": "All models failed to respond. Please try again."
+            "response": "All participants failed to respond. Please try again."
         }, {}
 
     # Этап 2: сбор рейтингов
-    stage2_results, label_to_model = await stage2_collect_rankings(user_query, stage1_results)
+    stage2_results, label_to_model = await stage2_collect_rankings(user_query, stage1_results, mode)
 
     # Расчёт агрегированных рейтингов
     aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
@@ -323,11 +472,13 @@ async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
     stage3_result = await stage3_synthesize_final(
         user_query,
         stage1_results,
-        stage2_results
+        stage2_results,
+        mode
     )
 
     # Формируем метаданные
     metadata = {
+        "mode": mode,
         "label_to_model": label_to_model,
         "aggregate_rankings": aggregate_rankings
     }

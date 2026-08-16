@@ -21,5 +21,8 @@ COUNCIL_MODELS = [
 # Модель председателя — синтезирует итоговый ответ
 CHAIRMAN_MODEL = os.getenv("CHAIRMAN_MODEL")
 
+# Модель для ролевого режима — отвечает от лица всех ролей совета
+ROLEPLAY_MODEL = os.getenv("ROLEPLAY_MODEL")
+
 # Каталог для хранения разговоров
 DATA_DIR = os.getenv("DATA_DIR", "data/conversations")

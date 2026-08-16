@@ -5,10 +5,29 @@ import Stage2 from './Stage2';
 import Stage3 from './Stage3';
 import './ChatInterface.css';
 
+const MODES = [
+  { value: 'ensemble', label: 'Битва моделей', description: 'Один вопрос — разным моделям' },
+  { value: 'roleplay', label: 'Ролевой мозговой штурм', description: 'Роли: Скептик, Визионер, Исполнитель и др.' },
+];
+
+const LOADING_TEXTS = {
+  stage1: {
+    ensemble: 'Этап 1: собираем ответы моделей...',
+    roleplay: 'Этап 1: собираем мнения ролей...',
+  },
+  stage2: {
+    ensemble: 'Этап 2: взаимное ранжирование моделей...',
+    roleplay: 'Этап 2: взаимное ранжирование ролей...',
+  },
+  stage3: 'Этап 3: синтез итогового ответа...',
+};
+
 export default function ChatInterface({
   conversation,
   onSendMessage,
   isLoading,
+  mode,
+  onModeChange,
 }) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
@@ -41,8 +60,8 @@ export default function ChatInterface({
     return (
       <div className="chat-interface">
         <div className="empty-state">
-          <h2>Welcome to LLM Council</h2>
-          <p>Create a new conversation to get started</p>
+          <h2>Добро пожаловать в LLM Council</h2>
+          <p>Создайте новый разговор, чтобы начать</p>
         </div>
       </div>
     );
@@ -53,15 +72,15 @@ export default function ChatInterface({
       <div className="messages-container">
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
-            <h2>Start a conversation</h2>
-            <p>Ask a question to consult the LLM Council</p>
+            <h2>Начните разговор</h2>
+            <p>Задайте вопрос, чтобы посоветоваться с LLM Council</p>
           </div>
         ) : (
           conversation.messages.map((msg, index) => (
             <div key={index} className="message-group">
               {msg.role === 'user' ? (
                 <div className="user-message">
-                  <div className="message-label">You</div>
+                  <div className="message-label">Вы</div>
                   <div className="message-content">
                     <div className="markdown-content">
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
@@ -76,7 +95,7 @@ export default function ChatInterface({
                   {msg.loading?.stage1 && (
                     <div className="stage-loading">
                       <div className="spinner"></div>
-                      <span>Running Stage 1: Collecting individual responses...</span>
+                      <span>{LOADING_TEXTS.stage1[mode]}</span>
                     </div>
                   )}
                   {msg.stage1 && <Stage1 responses={msg.stage1} />}
@@ -85,7 +104,7 @@ export default function ChatInterface({
                   {msg.loading?.stage2 && (
                     <div className="stage-loading">
                       <div className="spinner"></div>
-                      <span>Running Stage 2: Peer rankings...</span>
+                      <span>{LOADING_TEXTS.stage2[mode]}</span>
                     </div>
                   )}
                   {msg.stage2 && (
@@ -93,6 +112,7 @@ export default function ChatInterface({
                       rankings={msg.stage2}
                       labelToModel={msg.metadata?.label_to_model}
                       aggregateRankings={msg.metadata?.aggregate_rankings}
+                      mode={mode}
                     />
                   )}
 
@@ -100,7 +120,7 @@ export default function ChatInterface({
                   {msg.loading?.stage3 && (
                     <div className="stage-loading">
                       <div className="spinner"></div>
-                      <span>Running Stage 3: Final synthesis...</span>
+                      <span>{LOADING_TEXTS.stage3}</span>
                     </div>
                   )}
                   {msg.stage3 && <Stage3 finalResponse={msg.stage3} />}
@@ -113,33 +133,45 @@ export default function ChatInterface({
         {isLoading && (
           <div className="loading-indicator">
             <div className="spinner"></div>
-            <span>Consulting the council...</span>
+            <span>Совет размышляет...</span>
           </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {conversation.messages.length === 0 && (
-        <form className="input-form" onSubmit={handleSubmit}>
-          <textarea
-            className="message-input"
-            placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isLoading}
-            rows={3}
-          />
+      <div className="mode-selector">
+        {MODES.map((m) => (
           <button
-            type="submit"
-            className="send-button"
-            disabled={!input.trim() || isLoading}
+            key={m.value}
+            className={`mode-button ${mode === m.value ? 'active' : ''}`}
+            onClick={() => onModeChange(m.value)}
+            disabled={isLoading}
+            title={m.description}
           >
-            Send
+            {m.label}
           </button>
-        </form>
-      )}
+        ))}
+      </div>
+
+      <form className="input-form" onSubmit={handleSubmit}>
+        <textarea
+          className="message-input"
+          placeholder="Задайте вопрос... (Shift+Enter — новая строка, Enter — отправить)"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isLoading}
+          rows={3}
+        />
+        <button
+          type="submit"
+          className="send-button"
+          disabled={!input.trim() || isLoading}
+        >
+          Отправить
+        </button>
+      </form>
     </div>
   );
 }
