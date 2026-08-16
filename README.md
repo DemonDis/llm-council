@@ -2,49 +2,49 @@
 
 ![llmcouncil](header.jpg)
 
-The idea of this repo is that instead of asking a question to your favorite LLM provider (e.g. OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4, eg.c), you can group them into your "LLM Council". This repo is a simple, local web app that essentially looks like ChatGPT except it uses OpenRouter to send your query to multiple LLMs, it then asks them to review and rank each other's work, and finally a Chairman LLM produces the final response.
+Идея этого репозитория в том, что вместо того, чтобы задавать вопрос вашему любимому LLM-провайдеру (например, OpenAI GPT 5.1, Google Gemini 3.0 Pro, Anthropic Claude Sonnet 4.5, xAI Grok 4 и т.д.), вы можете объединить их в свой "Совет LLM" (LLM Council). Это простое локальное веб-приложение, которое по сути выглядит как ChatGPT, но использует OpenRouter для отправки вашего запроса сразу нескольким LLM. Затем модели просят оценить и проранжировать работы друг друга, и в конце председатель — LLM — формирует итоговый ответ.
 
-In a bit more detail, here is what happens when you submit a query:
+Подробнее о том, что происходит при отправке запроса:
 
-1. **Stage 1: First opinions**. The user query is given to all LLMs individually, and the responses are collected. The individual responses are shown in a "tab view", so that the user can inspect them all one by one.
-2. **Stage 2: Review**. Each individual LLM is given the responses of the other LLMs. Under the hood, the LLM identities are anonymized so that the LLM can't play favorites when judging their outputs. The LLM is asked to rank them in accuracy and insight.
-3. **Stage 3: Final response**. The designated Chairman of the LLM Council takes all of the model's responses and compiles them into a single final answer that is presented to the user.
+1. **Этап 1: Первые мнения**. Запрос пользователя отправляется всем LLM по отдельности, и ответы собираются. Каждый ответ отображается во "вкладках", чтобы пользователь мог просмотреть их по одному.
+2. **Этап 2: Рецензирование**. Каждой LLM передаются ответы других LLM. Под капотом личности LLM анонимизируются, чтобы модель не могла играть в любимчиков, оценивая свои собственные результаты. Модель просят проранжировать ответы по точности и глубине анализа.
+3. **Этап 3: Итоговый ответ**. Назначенный Председатель Совета LLM собирает все ответы моделей и компилирует их в единый финальный ответ, который и показывается пользователю.
 
-## Vibe Code Alert
+## Предупреждение: "Vibe Coding"
 
-This project was 99% vibe coded as a fun Saturday hack because I wanted to explore and evaluate a number of LLMs side by side in the process of [reading books together with LLMs](https://x.com/karpathy/status/1990577951671509438). It's nice and useful to see multiple responses side by side, and also the cross-opinions of all LLMs on each other's outputs. I'm not going to support it in any way, it's provided here as is for other people's inspiration and I don't intend to improve it. Code is ephemeral now and libraries are over, ask your LLM to change it in whatever way you like.
+Этот проект на 99% создан в стиле "vibe coding" как весёлый субботний хак, потому что мне хотелось исследовать и сравнить несколько LLM бок о бок в процессе [чтения книг вместе с LLM](https://x.com/karpathy/status/1990577951671509438). Приятно и полезно видеть несколько ответов рядом, а также взаимные мнения всех LLM о работах друг друга. Я не собираюсь его поддерживать — он выложен как есть, для вдохновения других, и я не планирую его улучшать. Код недолговечен, а эпоха библиотек закончилась — попросите свою LLM изменить его так, как вам нравится.
 
-## Setup
+## Установка
 
-### 1. Install Dependencies
+### 1. Установка зависимостей
 
-The project uses [uv](https://docs.astral.sh/uv/) for project management.
+Проект использует [uv](https://docs.astral.sh/uv/) для управления.
 
-**Backend:**
+**Бэкенд:**
 ```bash
 uv sync
 ```
 
-**Frontend:**
+**Фронтенд:**
 ```bash
 cd frontend
 npm install
 cd ..
 ```
 
-### 2. Configure API Key
+### 2. Настройка API-ключа
 
-Create a `.env` file in the project root:
+Создайте файл `.env` в корне проекта:
 
 ```bash
 OPENROUTER_API_KEY=sk-or-v1-...
 ```
 
-Get your API key at [openrouter.ai](https://openrouter.ai/). Make sure to purchase the credits you need, or sign up for automatic top up.
+Получите свой API-ключ на [openrouter.ai](https://openrouter.ai/). Не забудьте пополнить баланс на нужную сумму или включить автоматическое пополнение.
 
-### 3. Configure Models (Optional)
+### 3. Настройка моделей (необязательно)
 
-Edit `backend/config.py` to customize the council:
+Отредактируйте `backend/config.py`, чтобы настроить совет:
 
 ```python
 COUNCIL_MODELS = [
@@ -57,31 +57,31 @@ COUNCIL_MODELS = [
 CHAIRMAN_MODEL = "google/gemini-3-pro-preview"
 ```
 
-## Running the Application
+## Запуск приложения
 
-**Option 1: Use the start script**
+**Вариант 1: Использовать стартовый скрипт**
 ```bash
 ./start.sh
 ```
 
-**Option 2: Run manually**
+**Вариант 2: Запустить вручную**
 
-Terminal 1 (Backend):
+Терминал 1 (Бэкенд):
 ```bash
 uv run python -m backend.main
 ```
 
-Terminal 2 (Frontend):
+Терминал 2 (Фронтенд):
 ```bash
 cd frontend
 npm run dev
 ```
 
-Then open http://localhost:5173 in your browser.
+Затем откройте http://localhost:5173 в браузере.
 
-## Tech Stack
+## Технологический стек
 
-- **Backend:** FastAPI (Python 3.10+), async httpx, OpenRouter API
-- **Frontend:** React + Vite, react-markdown for rendering
-- **Storage:** JSON files in `data/conversations/`
-- **Package Management:** uv for Python, npm for JavaScript
+- **Бэкенд:** FastAPI (Python 3.10+), async httpx, OpenRouter API
+- **Фронтенд:** React + Vite, react-markdown для рендеринга
+- **Хранилище:** JSON-файлы в `data/conversations/`
+- **Управление зависимостями:** uv для Python, npm для JavaScript
