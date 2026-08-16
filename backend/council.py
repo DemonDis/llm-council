@@ -3,7 +3,7 @@
 from typing import List, Dict, Any, Tuple
 import asyncio
 from .openrouter import query_models_parallel, query_model
-from .config import COUNCIL_MODELS, CHAIRMAN_MODEL, ROLEPLAY_MODEL
+from .config import COUNCIL_MODELS, CHAIRMAN_MODEL, ROLEPLAY_MODEL, TITLE_MODEL
 
 # Режимы работы совета
 MODE_ENSEMBLE = "ensemble"    # Битва моделей: один вопрос разным моделям
@@ -422,8 +422,8 @@ async def generate_conversation_title(user_query: str) -> str:
 
     messages = [{"role": "user", "content": title_prompt}]
 
-    # Используем gemini-3-pro для генерации заголовка (быстро и дёшево)
-    response = await query_model("gemini-3-pro", messages, timeout=30.0)
+    # Используем TITLE_MODEL для генерации заголовка (быстро и дёшево)
+    response = await query_model(TITLE_MODEL, messages, timeout=30.0)
 
     if response is None:
         # Запасной вариант — стандартный заголовок
