@@ -7,7 +7,8 @@ import './ChatInterface.css';
 
 const MODES = [
   { value: 'ensemble', label: 'Битва моделей', description: 'Один вопрос — разным моделям' },
-  { value: 'roleplay', label: 'Ролевой мозговой штурм', description: 'Роли: Скептик, Визионер, Исполнитель и др.' },
+  // { value: 'roleplay', label: 'Ролевой мозговой штурм', description: 'Роли: Скептик, Визионер, Исполнитель и др.' },
+  { value: 'roleplay', label: 'Ролевой мозговой штурм', description: 'Роли: Роман, Наталья, Костантин и др.' },
 ];
 
 const LOADING_TEXTS = {
