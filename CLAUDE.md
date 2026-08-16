@@ -1,166 +1,166 @@
-# CLAUDE.md - Technical Notes for LLM Council
+# CLAUDE.md — Технические заметки для LLM Council
 
-This file contains technical details, architectural decisions, and important implementation notes for future development sessions.
+Этот файл содержит технические детали, архитектурные решения и важные заметки по реализации для будущих сессий разработки.
 
-## Project Overview
+## Обзор проекта
 
-LLM Council is a 3-stage deliberation system where multiple LLMs collaboratively answer user questions. The key innovation is anonymized peer review in Stage 2, preventing models from playing favorites.
+LLM Council — это трёхэтапная система обсуждения, в которой несколько LLM совместно отвечают на вопросы пользователя. Ключевая инновация — анонимизированное взаимное рецензирование на этапе 2, не позволяющее моделям играть в любимчиков.
 
-## Architecture
+## Архитектура
 
-### Backend Structure (`backend/`)
+### Структура бэкенда (`backend/`)
 
 **`config.py`**
-- Contains `COUNCIL_MODELS` (list of OpenRouter model identifiers)
-- Contains `CHAIRMAN_MODEL` (model that synthesizes final answer)
-- Uses environment variable `OPENROUTER_API_KEY` from `.env`
-- Backend runs on **port 8001** (NOT 8000 - user had another app on 8000)
+- Содержит `COUNCIL_MODELS` (список идентификаторов моделей OpenRouter)
+- Содержит `CHAIRMAN_MODEL` (модель, которая синтезирует итоговый ответ)
+- Читает переменные окружения из `.env`: `OPENROUTER_API_KEY`, `OPENROUTER_API_URL`, `COUNCIL_MODELS`, `CHAIRMAN_MODEL`, `DATA_DIR`
+- Бэкенд работает на **порту 8001** (НЕ 8000 — у пользователя другое приложение на 8000)
 
 **`openrouter.py`**
-- `query_model()`: Single async model query
-- `query_models_parallel()`: Parallel queries using `asyncio.gather()`
-- Returns dict with 'content' and optional 'reasoning_details'
-- Graceful degradation: returns None on failure, continues with successful responses
+- `query_model()`: одиночный асинхронный запрос к модели
+- `query_models_parallel()`: параллельные запросы через `asyncio.gather()`
+- Возвращает словарь с ключами 'content' и опциональным 'reasoning_details'
+- Изящная деградация: возвращает None при сбое и продолжает работу с успешными ответами
 
-**`council.py`** - The Core Logic
-- `stage1_collect_responses()`: Parallel queries to all council models
+**`council.py`** — ядро логики
+- `stage1_collect_responses()`: параллельные запросы ко всем моделям совета
 - `stage2_collect_rankings()`:
-  - Anonymizes responses as "Response A, B, C, etc."
-  - Creates `label_to_model` mapping for de-anonymization
-  - Prompts models to evaluate and rank (with strict format requirements)
-  - Returns tuple: (rankings_list, label_to_model_dict)
-  - Each ranking includes both raw text and `parsed_ranking` list
-- `stage3_synthesize_final()`: Chairman synthesizes from all responses + rankings
-- `parse_ranking_from_text()`: Extracts "FINAL RANKING:" section, handles both numbered lists and plain format
-- `calculate_aggregate_rankings()`: Computes average rank position across all peer evaluations
+  - Анонимизирует ответы как "Response A, B, C и т.д."
+  - Создаёт сопоставление `label_to_model` для деанонимизации
+  - Просит модели оценить и проранжировать (со строгими требованиями к формату)
+  - Возвращает кортеж: (список_рейтингов, словарь_label_to_model)
+  - Каждый рейтинг включает и сырой текст, и список `parsed_ranking`
+- `stage3_synthesize_final()`: председатель синтезирует ответ из всех ответов и рейтингов
+- `parse_ranking_from_text()`: извлекает секцию "FINAL RANKING:", обрабатывает и нумерованные списки, и обычный формат
+- `calculate_aggregate_rankings()`: вычисляет среднюю позицию по всем взаимным оценкам
 
 **`storage.py`**
-- JSON-based conversation storage in `data/conversations/`
-- Each conversation: `{id, created_at, messages[]}`
-- Assistant messages contain: `{role, stage1, stage2, stage3}`
-- Note: metadata (label_to_model, aggregate_rankings) is NOT persisted to storage, only returned via API
+- JSON-хранилище разговоров в `data/conversations/`
+- Каждый разговор: `{id, created_at, messages[]}`
+- Сообщения ассистента содержат: `{role, stage1, stage2, stage3}`
+- Важно: метаданные (label_to_model, aggregate_rankings) НЕ сохраняются в хранилище, только возвращаются через API
 
 **`main.py`**
-- FastAPI app with CORS enabled for localhost:5173 and localhost:3000
-- POST `/api/conversations/{id}/message` returns metadata in addition to stages
-- Metadata includes: label_to_model mapping and aggregate_rankings
+- FastAPI-приложение с CORS для localhost:5173 и localhost:3000
+- POST `/api/conversations/{id}/message` возвращает метаданные помимо этапов
+- Метаданные включают: сопоставление label_to_model и агрегированные рейтинги
 
-### Frontend Structure (`frontend/src/`)
+### Структура фронтенда (`frontend/src/`)
 
 **`App.jsx`**
-- Main orchestration: manages conversations list and current conversation
-- Handles message sending and metadata storage
-- Important: metadata is stored in the UI state for display but not persisted to backend JSON
+- Основная оркестрация: управляет списком разговоров и текущим разговором
+- Обрабатывает отправку сообщений и хранение метаданных
+- Важно: метаданные хранятся в состоянии UI для отображения, но не сохраняются в JSON бэкенда
 
 **`components/ChatInterface.jsx`**
-- Multiline textarea (3 rows, resizable)
-- Enter to send, Shift+Enter for new line
-- User messages wrapped in markdown-content class for padding
+- Многострочное textarea (3 строки, изменяемый размер)
+- Enter для отправки, Shift+Enter для новой строки
+- Сообщения пользователя оборачиваются в класс markdown-content для отступов
 
 **`components/Stage1.jsx`**
-- Tab view of individual model responses
-- ReactMarkdown rendering with markdown-content wrapper
+- Вкладки с индивидуальными ответами моделей
+- Рендеринг ReactMarkdown с обёрткой markdown-content
 
 **`components/Stage2.jsx`**
-- **Critical Feature**: Tab view showing RAW evaluation text from each model
-- De-anonymization happens CLIENT-SIDE for display (models receive anonymous labels)
-- Shows "Extracted Ranking" below each evaluation so users can validate parsing
-- Aggregate rankings shown with average position and vote count
-- Explanatory text clarifies that boldface model names are for readability only
+- **Ключевая функция**: вкладки с СЫРЫМ текстом оценок каждой модели
+- Деанонимизация происходит НА СТОРОНЕ КЛИЕНТА для отображения (модели получают анонимные метки)
+- Показывает "Извлечённый рейтинг" под каждой оценкой, чтобы пользователи могли проверить парсинг
+- Агрегированные рейтинги показаны со средней позицией и количеством голосов
+- Пояснительный текст объясняет, что жирные названия моделей нужны только для читаемости
 
 **`components/Stage3.jsx`**
-- Final synthesized answer from chairman
-- Green-tinted background (#f0fff0) to highlight conclusion
+- Итоговый синтезированный ответ председателя
+- Зелёный фон (#f0fff0) для выделения заключения
 
-**Styling (`*.css`)**
-- Light mode theme (not dark mode)
-- Primary color: #4a90e2 (blue)
-- Global markdown styling in `index.css` with `.markdown-content` class
-- 12px padding on all markdown content to prevent cluttered appearance
+**Стили (`*.css`)**
+- Светлая тема (не тёмная)
+- Основной цвет: #4a90e2 (синий)
+- Глобальные стили markdown в `index.css` с классом `.markdown-content`
+- Отступы 12px для всего markdown-содержимого, чтобы избежать захламлённого вида
 
-## Key Design Decisions
+## Ключевые архитектурные решения
 
-### Stage 2 Prompt Format
-The Stage 2 prompt is very specific to ensure parseable output:
+### Формат промпта этапа 2
+Промпт этапа 2 очень специфичен, чтобы обеспечить парсируемый вывод:
 ```
-1. Evaluate each response individually first
-2. Provide "FINAL RANKING:" header
-3. Numbered list format: "1. Response C", "2. Response A", etc.
-4. No additional text after ranking section
-```
-
-This strict format allows reliable parsing while still getting thoughtful evaluations.
-
-### De-anonymization Strategy
-- Models receive: "Response A", "Response B", etc.
-- Backend creates mapping: `{"Response A": "openai/gpt-5.1", ...}`
-- Frontend displays model names in **bold** for readability
-- Users see explanation that original evaluation used anonymous labels
-- This prevents bias while maintaining transparency
-
-### Error Handling Philosophy
-- Continue with successful responses if some models fail (graceful degradation)
-- Never fail the entire request due to single model failure
-- Log errors but don't expose to user unless all models fail
-
-### UI/UX Transparency
-- All raw outputs are inspectable via tabs
-- Parsed rankings shown below raw text for validation
-- Users can verify system's interpretation of model outputs
-- This builds trust and allows debugging of edge cases
-
-## Important Implementation Details
-
-### Relative Imports
-All backend modules use relative imports (e.g., `from .config import ...`) not absolute imports. This is critical for Python's module system to work correctly when running as `python -m backend.main`.
-
-### Port Configuration
-- Backend: 8001 (changed from 8000 to avoid conflict)
-- Frontend: 5173 (Vite default)
-- Update both `backend/main.py` and `frontend/src/api.js` if changing
-
-### Markdown Rendering
-All ReactMarkdown components must be wrapped in `<div className="markdown-content">` for proper spacing. This class is defined globally in `index.css`.
-
-### Model Configuration
-Models are hardcoded in `backend/config.py`. Chairman can be same or different from council members. The current default is Gemini as chairman per user preference.
-
-## Common Gotchas
-
-1. **Module Import Errors**: Always run backend as `python -m backend.main` from project root, not from backend directory
-2. **CORS Issues**: Frontend must match allowed origins in `main.py` CORS middleware
-3. **Ranking Parse Failures**: If models don't follow format, fallback regex extracts any "Response X" patterns in order
-4. **Missing Metadata**: Metadata is ephemeral (not persisted), only available in API responses
-
-## Future Enhancement Ideas
-
-- Configurable council/chairman via UI instead of config file
-- Streaming responses instead of batch loading
-- Export conversations to markdown/PDF
-- Model performance analytics over time
-- Custom ranking criteria (not just accuracy/insight)
-- Support for reasoning models (o1, etc.) with special handling
-
-## Testing Notes
-
-Use `test_openrouter.py` to verify API connectivity and test different model identifiers before adding to council. The script tests both streaming and non-streaming modes.
-
-## Data Flow Summary
-
-```
-User Query
-    ↓
-Stage 1: Parallel queries → [individual responses]
-    ↓
-Stage 2: Anonymize → Parallel ranking queries → [evaluations + parsed rankings]
-    ↓
-Aggregate Rankings Calculation → [sorted by avg position]
-    ↓
-Stage 3: Chairman synthesis with full context
-    ↓
-Return: {stage1, stage2, stage3, metadata}
-    ↓
-Frontend: Display with tabs + validation UI
+1. Сначала оценить каждый ответ по отдельности
+2. Указать заголовок "FINAL RANKING:"
+3. Формат нумерованного списка: "1. Response C", "2. Response A" и т.д.
+4. Никакого дополнительного текста после секции рейтинга
 ```
 
-The entire flow is async/parallel where possible to minimize latency.
+Этот строгий формат позволяет надёжный парсинг, сохраняя при этом содержательные оценки.
+
+### Стратегия деанонимизации
+- Модели получают: "Response A", "Response B" и т.д.
+- Бэкенд создаёт сопоставление: `{"Response A": "openai/gpt-5.1", ...}`
+- Фронтенд отображает названия моделей **жирным** для читаемости
+- Пользователи видят пояснение, что исходная оценка использовала анонимные метки
+- Это предотвращает предвзятость, сохраняя прозрачность
+
+### Философия обработки ошибок
+- Продолжать работу с успешными ответами, если некоторые модели сбоят (изящная деградация)
+- Никогда не проваливать весь запрос из-за сбоя одной модели
+- Логировать ошибки, но не показывать их пользователю, если не сбоят все модели
+
+### Прозрачность UI/UX
+- Все сырые результаты просматриваются через вкладки
+- Распарсенные рейтинги показываются под сырым текстом для проверки
+- Пользователи могут проверить интерпретацию вывода моделей системой
+- Это укрепляет доверие и упрощает отладку крайних случаев
+
+## Важные детали реализации
+
+### Относительные импорты
+Все модули бэкенда используют относительные импорты (например, `from .config import ...`), а не абсолютные. Это критически важно для корректной работы модульной системы Python при запуске через `python -m backend.main`.
+
+### Конфигурация портов
+- Бэкенд: 8001 (изменён с 8000 для избежания конфликта)
+- Фронтенд: 5173 (по умолчанию Vite)
+- При изменении обновляйте и `backend/main.py`, и `frontend/src/api.js`
+
+### Рендеринг Markdown
+Все компоненты ReactMarkdown должны быть обёрнуты в `<div className="markdown-content">` для корректных отступов. Этот класс определён глобально в `index.css`.
+
+### Конфигурация моделей
+Модели настраиваются через `.env` (переменные `COUNCIL_MODELS` и `CHAIRMAN_MODEL`). Председатель может совпадать с членами совета или отличаться от них. Текущее значение по умолчанию — Gemini в роли председателя (по предпочтению пользователя).
+
+## Частые проблемы
+
+1. **Ошибки импорта модулей**: всегда запускайте бэкенд как `python -m backend.main` из корня проекта, а не из каталога backend
+2. **Проблемы CORS**: фронтенд должен соответствовать разрешённым источникам в CORS-мидлваре `main.py`
+3. **Сбои парсинга рейтингов**: если модели не следуют формату, запасной regex извлекает любые паттерны "Response X" по порядку
+4. **Отсутствующие метаданные**: метаданные эфемерны (не сохраняются), доступны только в ответах API
+
+## Идеи для будущих улучшений
+
+- Настройка совета/председателя через UI вместо файла конфигурации
+- Потоковые ответы вместо пакетной загрузки
+- Экспорт разговоров в markdown/PDF
+- Аналитика производительности моделей с течением времени
+- Пользовательские критерии ранжирования (не только точность/глубина)
+- Поддержка моделей с рассуждением (o1 и т.д.) с особой обработкой
+
+## Заметки по тестированию
+
+Используйте `test_openrouter.py` для проверки подключения к API и тестирования различных идентификаторов моделей перед добавлением их в совет. Скрипт тестирует как потоковый, так и непотоковый режимы.
+
+## Сводка потока данных
+
+```
+Запрос пользователя
+    ↓
+Этап 1: параллельные запросы → [индивидуальные ответы]
+    ↓
+Этап 2: анонимизация → параллельные запросы рейтингов → [оценки + распарсенные рейтинги]
+    ↓
+Расчёт агрегированных рейтингов → [сортировка по средней позиции]
+    ↓
+Этап 3: синтез председателем с полным контекстом
+    ↓
+Возврат: {stage1, stage2, stage3, metadata}
+    ↓
+Фронтенд: отображение с вкладками + UI проверки
+```
+
+Весь поток максимально асинхронный/параллельный, чтобы минимизировать задержку.
