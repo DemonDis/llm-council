@@ -1,4 +1,4 @@
-"""3-stage LLM Council orchestration."""
+"""Оркестрация трёхэтапного процесса LLM Council."""
 
 from typing import List, Dict, Any, Tuple
 from .openrouter import query_models_parallel, query_model
@@ -7,23 +7,23 @@ from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
 async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
     """
-    Stage 1: Collect individual responses from all council models.
+    Этап 1: сбор индивидуальных ответов от всех моделей совета.
 
     Args:
-        user_query: The user's question
+        user_query: Вопрос пользователя
 
     Returns:
-        List of dicts with 'model' and 'response' keys
+        Список словарей с ключами 'model' и 'response'
     """
     messages = [{"role": "user", "content": user_query}]
 
-    # Query all models in parallel
+    # Параллельный запрос ко всем моделям
     responses = await query_models_parallel(COUNCIL_MODELS, messages)
 
-    # Format results
+    # Формируем результаты
     stage1_results = []
     for model, response in responses.items():
-        if response is not None:  # Only include successful responses
+        if response is not None:  # Включаем только успешные ответы
             stage1_results.append({
                 "model": model,
                 "response": response.get('content', '')
@@ -37,67 +37,67 @@ async def stage2_collect_rankings(
     stage1_results: List[Dict[str, Any]]
 ) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
     """
-    Stage 2: Each model ranks the anonymized responses.
+    Этап 2: каждая модель ранжирует анонимизированные ответы.
 
     Args:
-        user_query: The original user query
-        stage1_results: Results from Stage 1
+        user_query: Исходный запрос пользователя
+        stage1_results: Результаты этапа 1
 
     Returns:
-        Tuple of (rankings list, label_to_model mapping)
+        Кортеж (список рейтингов, сопоставление меток и моделей)
     """
-    # Create anonymized labels for responses (Response A, Response B, etc.)
+    # Создаём анонимные метки для ответов (Response A, Response B и т.д.)
     labels = [chr(65 + i) for i in range(len(stage1_results))]  # A, B, C, ...
 
-    # Create mapping from label to model name
+    # Создаём сопоставление меток с названиями моделей
     label_to_model = {
         f"Response {label}": result['model']
         for label, result in zip(labels, stage1_results)
     }
 
-    # Build the ranking prompt
+    # Формируем промпт для ранжирования
     responses_text = "\n\n".join([
         f"Response {label}:\n{result['response']}"
         for label, result in zip(labels, stage1_results)
     ])
 
-    ranking_prompt = f"""You are evaluating different responses to the following question:
+    ranking_prompt = f"""Вы оцениваете различные ответы на следующий вопрос:
 
-Question: {user_query}
+Вопрос: {user_query}
 
-Here are the responses from different models (anonymized):
+Вот ответы от разных моделей (анонимизированы):
 
 {responses_text}
 
-Your task:
-1. First, evaluate each response individually. For each response, explain what it does well and what it does poorly.
-2. Then, at the very end of your response, provide a final ranking.
+Ваша задача:
+1. Сначала оцените каждый ответ по отдельности. Для каждого ответа объясните, что в нём хорошо, а что плохо.
+2. Затем, в самом конце вашего ответа, предоставьте итоговый рейтинг.
 
-IMPORTANT: Your final ranking MUST be formatted EXACTLY as follows:
-- Start with the line "FINAL RANKING:" (all caps, with colon)
-- Then list the responses from best to worst as a numbered list
-- Each line should be: number, period, space, then ONLY the response label (e.g., "1. Response A")
-- Do not add any other text or explanations in the ranking section
+ВАЖНО: Ваш итоговый рейтинг ДОЛЖЕН быть отформатирован ТОЧНО следующим образом:
+- Начните со строки "FINAL RANKING:" (заглавными буквами, с двоеточием)
+- Затем перечислите ответы от лучшего к худшему в виде нумерованного списка
+- Каждая строка должна быть: номер, точка, пробел, затем ТОЛЬКО метка ответа (например, "1. Response A")
+- Не добавляйте никакого другого текста или пояснений в раздел рейтинга
 
-Example of the correct format for your ENTIRE response:
+Пример правильного формата для ВСЕГО вашего ответа:
 
-Response A provides good detail on X but misses Y...
-Response B is accurate but lacks depth on Z...
-Response C offers the most comprehensive answer...
+Response A предоставляет хорошие детали по X, но упускает Y...
+Response B точен, но не хватает глубины по Z...
+Response C даёт самый полный ответ...
 
 FINAL RANKING:
 1. Response C
 2. Response A
 3. Response B
 
-Now provide your evaluation and ranking:"""
+Теперь предоставьте вашу оценку и рейтинг:"""
 
     messages = [{"role": "user", "content": ranking_prompt}]
 
-    # Get rankings from all council models in parallel
+    # Получаем рейтинги от всех моделей совета параллельно
     responses = await query_models_parallel(COUNCIL_MODELS, messages)
 
-    # Format results
+    # Формируем результаты
     stage2_results = []
     for model, response in responses.items():
         if response is not None:
@@ -118,17 +118,17 @@ async def stage3_synthesize_final(
     stage2_results: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
     """
-    Stage 3: Chairman synthesizes final response.
+    Этап 3: председатель синтезирует итоговый ответ.
 
     Args:
-        user_query: The original user query
-        stage1_results: Individual model responses from Stage 1
-        stage2_results: Rankings from Stage 2
+        user_query: Исходный запрос пользователя
+        stage1_results: Индивидуальные ответы моделей с этапа 1
+        stage2_results: Рейтинги с этапа 2
 
     Returns:
-        Dict with 'model' and 'response' keys
+        Словарь с ключами 'model' и 'response'
     """
-    # Build comprehensive context for chairman
+    # Формируем полный контекст для председателя
     stage1_text = "\n\n".join([
         f"Model: {result['model']}\nResponse: {result['response']}"
         for result in stage1_results
@@ -139,30 +139,30 @@ async def stage3_synthesize_final(
         for result in stage2_results
     ])
 
-    chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.
+    chairman_prompt = f"""Вы — Председатель Совета LLM. Несколько моделей ИИ предоставили ответы на вопрос пользователя, а затем проранжировали ответы друг друга.
 
-Original Question: {user_query}
+Исходный вопрос: {user_query}
 
-STAGE 1 - Individual Responses:
+ЭТАП 1 — Индивидуальные ответы:
 {stage1_text}
 
-STAGE 2 - Peer Rankings:
+ЭТАП 2 — Взаимные рейтинги:
 {stage2_text}
 
-Your task as Chairman is to synthesize all of this information into a single, comprehensive, accurate answer to the user's original question. Consider:
-- The individual responses and their insights
-- The peer rankings and what they reveal about response quality
-- Any patterns of agreement or disagreement
+Ваша задача как Председателя — синтезировать всю эту информацию в один полный, точный и исчерпывающий ответ на исходный вопрос пользователя. Учитывайте:
+- Индивидуальные ответы и их идеи
+- Взаимные рейтинги и то, что они говорят о качестве ответов
+- Любые закономерности согласия или разногласий
 
-Provide a clear, well-reasoned final answer that represents the council's collective wisdom:"""
+Предоставьте чёткий, хорошо обоснованный итоговый ответ, отражающий коллективную мудрость совета:"""
 
     messages = [{"role": "user", "content": chairman_prompt}]
 
-    # Query the chairman model
+    # Запрашиваем модель председателя
     response = await query_model(CHAIRMAN_MODEL, messages)
 
     if response is None:
-        # Fallback if chairman fails
+        # Запасной вариант, если председатель не ответил
         return {
             "model": CHAIRMAN_MODEL,
             "response": "Error: Unable to generate final synthesis."
@@ -176,34 +176,34 @@ Provide a clear, well-reasoned final answer that represents the council's collec
 
 def parse_ranking_from_text(ranking_text: str) -> List[str]:
     """
-    Parse the FINAL RANKING section from the model's response.
+    Извлечение секции FINAL RANKING из ответа модели.
 
     Args:
-        ranking_text: The full text response from the model
+        ranking_text: Полный текстовый ответ модели
 
     Returns:
-        List of response labels in ranked order
+        Список меток ответов в порядке рейтинга
     """
     import re
 
-    # Look for "FINAL RANKING:" section
+    # Ищем секцию "FINAL RANKING:"
     if "FINAL RANKING:" in ranking_text:
-        # Extract everything after "FINAL RANKING:"
+        # Извлекаем всё после "FINAL RANKING:"
         parts = ranking_text.split("FINAL RANKING:")
         if len(parts) >= 2:
             ranking_section = parts[1]
-            # Try to extract numbered list format (e.g., "1. Response A")
-            # This pattern looks for: number, period, optional space, "Response X"
+            # Пробуем извлечь нумерованный список (например, "1. Response A")
+            # Этот шаблон ищет: номер, точка, необязательный пробел, "Response X"
             numbered_matches = re.findall(r'\d+\.\s*Response [A-Z]', ranking_section)
             if numbered_matches:
-                # Extract just the "Response X" part
+                # Извлекаем только часть "Response X"
                 return [re.search(r'Response [A-Z]', m).group() for m in numbered_matches]
 
-            # Fallback: Extract all "Response X" patterns in order
+            # Запасной вариант: извлекаем все "Response X" по порядку
             matches = re.findall(r'Response [A-Z]', ranking_section)
             return matches
 
-    # Fallback: try to find any "Response X" patterns in order
+    # Запасной вариант: ищем любые "Response X" по порядку во всём тексте
     matches = re.findall(r'Response [A-Z]', ranking_text)
     return matches
 
@@ -213,24 +213,24 @@ def calculate_aggregate_rankings(
     label_to_model: Dict[str, str]
 ) -> List[Dict[str, Any]]:
     """
-    Calculate aggregate rankings across all models.
+    Расчёт агрегированных рейтингов по всем моделям.
 
     Args:
-        stage2_results: Rankings from each model
-        label_to_model: Mapping from anonymous labels to model names
+        stage2_results: Рейтинги от каждой модели
+        label_to_model: Сопоставление анонимных меток с названиями моделей
 
     Returns:
-        List of dicts with model name and average rank, sorted best to worst
+        Список словарей с названием модели и средним местом, отсортированный от лучшего к худшему
     """
     from collections import defaultdict
 
-    # Track positions for each model
+    # Отслеживаем позиции каждой модели
     model_positions = defaultdict(list)
 
     for ranking in stage2_results:
         ranking_text = ranking['ranking']
 
-        # Parse the ranking from the structured format
+        # Извлекаем рейтинг из структурированного формата
         parsed_ranking = parse_ranking_from_text(ranking_text)
 
         for position, label in enumerate(parsed_ranking, start=1):
@@ -238,7 +238,7 @@ def calculate_aggregate_rankings(
                 model_name = label_to_model[label]
                 model_positions[model_name].append(position)
 
-    # Calculate average position for each model
+    # Вычисляем среднюю позицию для каждой модели
     aggregate = []
     for model, positions in model_positions.items():
         if positions:
@@ -249,7 +249,7 @@ def calculate_aggregate_rankings(
                 "rankings_count": len(positions)
             })
 
-    # Sort by average rank (lower is better)
+    # Сортируем по средней позиции (меньше — лучше)
     aggregate.sort(key=lambda x: x['average_rank'])
 
     return aggregate
@@ -257,36 +257,36 @@ def calculate_aggregate_rankings(
 
 async def generate_conversation_title(user_query: str) -> str:
     """
-    Generate a short title for a conversation based on the first user message.
+    Генерация короткого заголовка разговора на основе первого сообщения пользователя.
 
     Args:
-        user_query: The first user message
+        user_query: Первое сообщение пользователя
 
     Returns:
-        A short title (3-5 words)
+        Короткий заголовок (3-5 слов)
     """
-    title_prompt = f"""Generate a very short title (3-5 words maximum) that summarizes the following question.
-The title should be concise and descriptive. Do not use quotes or punctuation in the title.
+    title_prompt = f"""Сгенерируйте очень короткий заголовок (не более 3-5 слов), который кратко описывает следующий вопрос.
+Заголовок должен быть лаконичным и описательным. Не используйте кавычки или знаки препинания в заголовке.
 
-Question: {user_query}
+Вопрос: {user_query}
 
-Title:"""
+Заголовок:"""
 
     messages = [{"role": "user", "content": title_prompt}]
 
-    # Use gemini-2.5-flash for title generation (fast and cheap)
+    # Используем gemini-3-pro для генерации заголовка (быстро и дёшево)
     response = await query_model("gemini-3-pro", messages, timeout=30.0)
 
     if response is None:
-        # Fallback to a generic title
+        # Запасной вариант — стандартный заголовок
         return "New Conversation"
 
     title = response.get('content', 'New Conversation').strip()
 
-    # Clean up the title - remove quotes, limit length
+    # Очищаем заголовок — убираем кавычки, ограничиваем длину
     title = title.strip('"\'')
 
-    # Truncate if too long
+    # Обрезаем, если слишком длинный
     if len(title) > 50:
         title = title[:47] + "..."
 
@@ -295,38 +295,38 @@ Title:"""
 
 async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
     """
-    Run the complete 3-stage council process.
+    Запуск полного трёхэтапного процесса совета.
 
     Args:
-        user_query: The user's question
+        user_query: Вопрос пользователя
 
     Returns:
-        Tuple of (stage1_results, stage2_results, stage3_result, metadata)
+        Кортеж (результаты этапа 1, результаты этапа 2, результат этапа 3, метаданные)
     """
-    # Stage 1: Collect individual responses
+    # Этап 1: сбор индивидуальных ответов
     stage1_results = await stage1_collect_responses(user_query)
 
-    # If no models responded successfully, return error
+    # Если ни одна модель не ответила успешно, возвращаем ошибку
     if not stage1_results:
         return [], [], {
             "model": "error",
             "response": "All models failed to respond. Please try again."
         }, {}
 
-    # Stage 2: Collect rankings
+    # Этап 2: сбор рейтингов
     stage2_results, label_to_model = await stage2_collect_rankings(user_query, stage1_results)
 
-    # Calculate aggregate rankings
+    # Расчёт агрегированных рейтингов
     aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
 
-    # Stage 3: Synthesize final answer
+    # Этап 3: синтез итогового ответа
     stage3_result = await stage3_synthesize_final(
         user_query,
         stage1_results,
         stage2_results
     )
 
-    # Prepare metadata
+    # Формируем метаданные
     metadata = {
         "label_to_model": label_to_model,
         "aggregate_rankings": aggregate_rankings

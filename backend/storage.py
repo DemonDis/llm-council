@@ -1,4 +1,4 @@
-"""JSON-based storage for conversations."""
+"""Хранилище разговоров на основе JSON."""
 
 import json
 import os
@@ -9,24 +9,24 @@ from .config import DATA_DIR
 
 
 def ensure_data_dir():
-    """Ensure the data directory exists."""
+    """Проверяет, что каталог данных существует."""
     Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
 
 
 def get_conversation_path(conversation_id: str) -> str:
-    """Get the file path for a conversation."""
+    """Возвращает путь к файлу разговора."""
     return os.path.join(DATA_DIR, f"{conversation_id}.json")
 
 
 def create_conversation(conversation_id: str) -> Dict[str, Any]:
     """
-    Create a new conversation.
+    Создание нового разговора.
 
     Args:
-        conversation_id: Unique identifier for the conversation
+        conversation_id: Уникальный идентификатор разговора
 
     Returns:
-        New conversation dict
+        Словарь нового разговора
     """
     ensure_data_dir()
 
@@ -37,7 +37,7 @@ def create_conversation(conversation_id: str) -> Dict[str, Any]:
         "messages": []
     }
 
-    # Save to file
+    # Сохраняем в файл
     path = get_conversation_path(conversation_id)
     with open(path, 'w') as f:
         json.dump(conversation, f, indent=2)
@@ -47,13 +47,13 @@ def create_conversation(conversation_id: str) -> Dict[str, Any]:
 
 def get_conversation(conversation_id: str) -> Optional[Dict[str, Any]]:
     """
-    Load a conversation from storage.
+    Загрузка разговора из хранилища.
 
     Args:
-        conversation_id: Unique identifier for the conversation
+        conversation_id: Уникальный идентификатор разговора
 
     Returns:
-        Conversation dict or None if not found
+        Словарь разговора или None, если не найден
     """
     path = get_conversation_path(conversation_id)
 
@@ -66,10 +66,10 @@ def get_conversation(conversation_id: str) -> Optional[Dict[str, Any]]:
 
 def save_conversation(conversation: Dict[str, Any]):
     """
-    Save a conversation to storage.
+    Сохранение разговора в хранилище.
 
     Args:
-        conversation: Conversation dict to save
+        conversation: Словарь разговора для сохранения
     """
     ensure_data_dir()
 
@@ -80,10 +80,10 @@ def save_conversation(conversation: Dict[str, Any]):
 
 def list_conversations() -> List[Dict[str, Any]]:
     """
-    List all conversations (metadata only).
+    Список всех разговоров (только метаданные).
 
     Returns:
-        List of conversation metadata dicts
+        Список словарей с метаданными разговоров
     """
     ensure_data_dir()
 
@@ -93,7 +93,7 @@ def list_conversations() -> List[Dict[str, Any]]:
             path = os.path.join(DATA_DIR, filename)
             with open(path, 'r') as f:
                 data = json.load(f)
-                # Return metadata only
+                # Возвращаем только метаданные
                 conversations.append({
                     "id": data["id"],
                     "created_at": data["created_at"],
@@ -101,7 +101,7 @@ def list_conversations() -> List[Dict[str, Any]]:
                     "message_count": len(data["messages"])
                 })
 
-    # Sort by creation time, newest first
+    # Сортируем по времени создания, новые сверху
     conversations.sort(key=lambda x: x["created_at"], reverse=True)
 
     return conversations
@@ -109,11 +109,11 @@ def list_conversations() -> List[Dict[str, Any]]:
 
 def add_user_message(conversation_id: str, content: str):
     """
-    Add a user message to a conversation.
+    Добавление сообщения пользователя в разговор.
 
     Args:
-        conversation_id: Conversation identifier
-        content: User message content
+        conversation_id: Идентификатор разговора
+        content: Содержимое сообщения пользователя
     """
     conversation = get_conversation(conversation_id)
     if conversation is None:
@@ -134,13 +134,13 @@ def add_assistant_message(
     stage3: Dict[str, Any]
 ):
     """
-    Add an assistant message with all 3 stages to a conversation.
+    Добавление сообщения ассистента со всеми 3 этапами в разговор.
 
     Args:
-        conversation_id: Conversation identifier
-        stage1: List of individual model responses
-        stage2: List of model rankings
-        stage3: Final synthesized response
+        conversation_id: Идентификатор разговора
+        stage1: Список индивидуальных ответов моделей
+        stage2: Список рейтингов моделей
+        stage3: Итоговый синтезированный ответ
     """
     conversation = get_conversation(conversation_id)
     if conversation is None:
@@ -158,11 +158,11 @@ def add_assistant_message(
 
 def update_conversation_title(conversation_id: str, title: str):
     """
-    Update the title of a conversation.
+    Обновление заголовка разговора.
 
     Args:
-        conversation_id: Conversation identifier
-        title: New title for the conversation
+        conversation_id: Идентификатор разговора
+        title: Новый заголовок разговора
     """
     conversation = get_conversation(conversation_id)
     if conversation is None:

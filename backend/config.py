@@ -1,15 +1,15 @@
-"""Configuration for the LLM Council."""
+"""Конфигурация для LLM Council."""
 
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# OpenRouter API key
+# Ключ API OpenRouter
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_API_URL = os.getenv("OPENROUTER_API_URL")
 
-# Council members - list of OpenRouter model identifiers
+# Члены совета — список идентификаторов моделей OpenRouter
 COUNCIL_MODELS = [
     "deepseek-v3.1",
     "gemini-3-pro",
@@ -21,11 +21,11 @@ COUNCIL_MODELS = [
     "qwen3-30b-a3b",
 ]
 
-# Chairman model - synthesizes final response
+# Модель председателя — синтезирует итоговый ответ
 CHAIRMAN_MODEL = "gemini-3-pro"
 
-# OpenRouter API endpoint
+# Конечная точка API OpenRouter
 # OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# Data directory for conversation storage
+# Каталог для хранения разговоров
 DATA_DIR = "data/conversations"

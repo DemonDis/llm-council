@@ -1,1 +1,1 @@
-"""LLM Council backend package."""
+"""Пакет бэкенда LLM Council."""

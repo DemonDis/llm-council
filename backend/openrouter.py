@@ -1,4 +1,4 @@
-"""OpenRouter API client for making LLM requests."""
+"""Клиент API OpenRouter для запросов к LLM."""
 
 import httpx
 from typing import List, Dict, Any, Optional
@@ -11,15 +11,15 @@ async def query_model(
     timeout: float = 120.0
 ) -> Optional[Dict[str, Any]]:
     """
-    Query a single model via OpenRouter API.
+    Запрос к одной модели через API OpenRouter.
 
     Args:
-        model: OpenRouter model identifier (e.g., "openai/gpt-4o")
-        messages: List of message dicts with 'role' and 'content'
-        timeout: Request timeout in seconds
+        model: Идентификатор модели OpenRouter (например, "openai/gpt-4o")
+        messages: Список словарей сообщений с ключами 'role' и 'content'
+        timeout: Тайм-аут запроса в секундах
 
     Returns:
-        Response dict with 'content' and optional 'reasoning_details', or None if failed
+        Словарь ответа с ключами 'content' и опциональным 'reasoning_details', либо None при ошибке
     """
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -58,22 +58,22 @@ async def query_models_parallel(
     messages: List[Dict[str, str]]
 ) -> Dict[str, Optional[Dict[str, Any]]]:
     """
-    Query multiple models in parallel.
+    Параллельный запрос к нескольким моделям.
 
     Args:
-        models: List of OpenRouter model identifiers
-        messages: List of message dicts to send to each model
+        models: Список идентификаторов моделей OpenRouter
+        messages: Список словарей сообщений, отправляемых каждой модели
 
     Returns:
-        Dict mapping model identifier to response dict (or None if failed)
+        Словарь, сопоставляющий идентификатор модели со словарём ответа (или None при ошибке)
     """
     import asyncio
 
-    # Create tasks for all models
+    # Создаём задачи для всех моделей
     tasks = [query_model(model, messages) for model in models]
 
-    # Wait for all to complete
+    # Ожидаем завершения всех
     responses = await asyncio.gather(*tasks)
 
-    # Map models to their responses
+    # Сопоставляем модели с их ответами
     return {model: response for model, response in zip(models, responses)}
