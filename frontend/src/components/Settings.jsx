@@ -4,7 +4,6 @@ import './Settings.css';
 export default function Settings({ envConfig, settings, onSave, onClear, onClose }) {
   const [apiKey, setApiKey] = useState(settings.apiKey || '');
   const [apiUrl, setApiUrl] = useState(settings.apiUrl || '');
-  const [deviceName, setDeviceName] = useState(settings.deviceName || '');
   const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(null);
 
@@ -26,7 +25,7 @@ export default function Settings({ envConfig, settings, onSave, onClear, onClose
   };
 
   const handleSave = () => {
-    onSave({ apiKey: apiKey.trim(), apiUrl: apiUrl.trim(), deviceName: deviceName.trim() });
+    onSave({ apiKey: apiKey.trim(), apiUrl: apiUrl.trim() });
     onClose();
   };
 
@@ -106,23 +105,6 @@ export default function Settings({ envConfig, settings, onSave, onClear, onClose
               переопределить его.
             </div>
           )}
-        </div>
-
-        <div className="settings-section">
-          <label>Имя этого устройства</label>
-          <div className="settings-field">
-            <input
-              type="text"
-              value={deviceName}
-              onChange={(e) => setDeviceName(e.target.value)}
-              placeholder="Например: Ноутбук Ивана"
-              spellCheck="false"
-            />
-          </div>
-          <div className="settings-hint">
-            Будет показываться рядом с вашими разговорами, чтобы другие пользователи видели, с
-            какого компьютера они созданы.
-          </div>
         </div>
 
         <div className="settings-actions">

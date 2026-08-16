@@ -12,7 +12,7 @@ export default function Sidebar({
 }) {
   const getDeviceLabel = (conv) => {
     if (conv.device_id === deviceId) return 'С этого компьютера';
-    if (conv.device_name) return conv.device_name;
+    if (conv.device_ip) return conv.device_ip;
     return 'Другой компьютер';
   };
 

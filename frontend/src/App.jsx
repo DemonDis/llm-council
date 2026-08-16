@@ -11,9 +11,9 @@ const DEVICE_ID_STORAGE_KEY = 'llm_council_device_id';
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { apiKey: '', apiUrl: '', deviceName: '' };
+    return raw ? JSON.parse(raw) : { apiKey: '', apiUrl: '' };
   } catch (e) {
-    return { apiKey: '', apiUrl: '', deviceName: '' };
+    return { apiKey: '', apiUrl: '' };
   }
 }
 
@@ -73,17 +73,13 @@ function App() {
 
   const handleNewConversation = async () => {
     try {
-      const newConv = await api.createConversation({
-        device_id: deviceId,
-        device_name: settings.deviceName,
-      });
+      const newConv = await api.createConversation({ device_id: deviceId });
       setConversations([
         {
           id: newConv.id,
           created_at: newConv.created_at,
           message_count: 0,
           device_id: deviceId,
-          device_name: settings.deviceName,
         },
         ...conversations,
       ]);
@@ -117,11 +113,8 @@ function App() {
   };
 
   const handleClearSettings = () => {
-    setSettings({ apiKey: '', apiUrl: '', deviceName: settings.deviceName });
-    localStorage.setItem(
-      SETTINGS_STORAGE_KEY,
-      JSON.stringify({ apiKey: '', apiUrl: '', deviceName: settings.deviceName })
-    );
+    setSettings({ apiKey: '', apiUrl: '' });
+    localStorage.removeItem(SETTINGS_STORAGE_KEY);
   };
 
   // Локальные значения из настроек имеют приоритет над .env.
@@ -130,7 +123,6 @@ function App() {
     ...(settings.apiKey ? { api_key: settings.apiKey } : {}),
     ...(settings.apiUrl ? { api_url: settings.apiUrl } : {}),
     device_id: deviceId,
-    ...(settings.deviceName ? { device_name: settings.deviceName } : {}),
   };
 
   const handleSendMessage = async (content) => {

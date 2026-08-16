@@ -21,7 +21,7 @@ def get_conversation_path(conversation_id: str) -> str:
 def create_conversation(
     conversation_id: str,
     device_id: Optional[str] = None,
-    device_name: Optional[str] = None
+    device_ip: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Создание нового разговора.
@@ -29,7 +29,7 @@ def create_conversation(
     Args:
         conversation_id: Уникальный идентификатор разговора
         device_id: Идентификатор устройства/браузера, создавшего разговор
-        device_name: Человекочитаемое имя устройства (необязательно)
+        device_ip: IP-адрес устройства, создавшего разговор
 
     Returns:
         Словарь нового разговора
@@ -41,14 +41,14 @@ def create_conversation(
         "created_at": datetime.utcnow().isoformat(),
         "title": "New Conversation",
         "device_id": device_id,
-        "device_name": device_name,
+        "device_ip": device_ip,
         "messages": []
     }
 
     # Сохраняем в файл
     path = get_conversation_path(conversation_id)
-    with open(path, 'w') as f:
-        json.dump(conversation, f, indent=2)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(conversation, f, indent=2, ensure_ascii=False)
 
     return conversation
 
@@ -82,8 +82,8 @@ def save_conversation(conversation: Dict[str, Any]):
     ensure_data_dir()
 
     path = get_conversation_path(conversation['id'])
-    with open(path, 'w') as f:
-        json.dump(conversation, f, indent=2)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(conversation, f, indent=2, ensure_ascii=False)
 
 
 def list_conversations() -> List[Dict[str, Any]]:
@@ -108,7 +108,7 @@ def list_conversations() -> List[Dict[str, Any]]:
                     "title": data.get("title", "New Conversation"),
                     "message_count": len(data["messages"]),
                     "device_id": data.get("device_id"),
-                    "device_name": data.get("device_name")
+                    "device_ip": data.get("device_ip")
                 })
 
     # Сортируем по времени создания, новые сверху
@@ -136,7 +136,11 @@ def delete_conversation(conversation_id: str) -> bool:
     return True
 
 
-def set_device_info(conversation_id: str, device_id: str, device_name: Optional[str] = None):
+def set_device_info(
+    conversation_id: str,
+    device_id: str,
+    device_ip: Optional[str] = None
+):
     """
     Заполняет информацию об устройстве, если она ещё не установлена.
 
@@ -145,7 +149,7 @@ def set_device_info(conversation_id: str, device_id: str, device_name: Optional[
     Args:
         conversation_id: Идентификатор разговора
         device_id: Идентификатор устройства
-        device_name: Человекочитаемое имя устройства (необязательно)
+        device_ip: IP-адрес устройства
     """
     conversation = get_conversation(conversation_id)
     if conversation is None:
@@ -153,7 +157,7 @@ def set_device_info(conversation_id: str, device_id: str, device_name: Optional[
 
     if conversation.get("device_id") is None and device_id:
         conversation["device_id"] = device_id
-        conversation["device_name"] = device_name
+        conversation["device_ip"] = device_ip
         save_conversation(conversation)
 
 

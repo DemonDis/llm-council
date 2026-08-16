@@ -1,6 +1,6 @@
 """FastAPI бэкенд для LLM Council."""
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -28,7 +28,6 @@ app.add_middleware(
 class CreateConversationRequest(BaseModel):
     """Запрос на создание нового разговора."""
     device_id: Optional[str] = None
-    device_name: Optional[str] = None
 
 
 class SendMessageRequest(BaseModel):
@@ -38,9 +37,8 @@ class SendMessageRequest(BaseModel):
     # Ключ и URL API, введённые на фронтенде (используются, если не заданы в .env)
     api_key: Optional[str] = None
     api_url: Optional[str] = None
-    # Информация об устройстве, с которого отправлено сообщение
+    # Идентификатор устройства, с которого отправлено сообщение
     device_id: Optional[str] = None
-    device_name: Optional[str] = None
 
 
 class ConversationMetadata(BaseModel):
@@ -50,7 +48,7 @@ class ConversationMetadata(BaseModel):
     title: str
     message_count: int
     device_id: Optional[str] = None
-    device_name: Optional[str] = None
+    device_ip: Optional[str] = None
 
 
 class Conversation(BaseModel):
@@ -84,13 +82,13 @@ async def list_conversations():
 
 
 @app.post("/api/conversations", response_model=Conversation)
-async def create_conversation(request: CreateConversationRequest):
+async def create_conversation(request: CreateConversationRequest, http_request: Request):
     """Создание нового разговора."""
     conversation_id = str(uuid.uuid4())
     conversation = storage.create_conversation(
         conversation_id,
         device_id=request.device_id,
-        device_name=request.device_name
+        device_ip=http_request.client.host if http_request.client else None
     )
     return conversation
 
@@ -125,7 +123,7 @@ async def get_conversation(conversation_id: str):
 
 
 @app.post("/api/conversations/{conversation_id}/message")
-async def send_message(conversation_id: str, request: SendMessageRequest):
+async def send_message(conversation_id: str, request: SendMessageRequest, http_request: Request):
     """
     Отправка сообщения и запуск трёхэтапного процесса совета.
     Возвращает полный ответ со всеми этапами.
@@ -140,7 +138,11 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
 
     # Отмечаем устройство для разговоров без информации о нём
     if request.device_id:
-        storage.set_device_info(conversation_id, request.device_id, request.device_name)
+        storage.set_device_info(
+            conversation_id,
+            request.device_id,
+            http_request.client.host if http_request.client else None
+        )
 
     # Добавляем сообщение пользователя
     storage.add_user_message(conversation_id, request.content)
@@ -180,7 +182,7 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
 
 
 @app.post("/api/conversations/{conversation_id}/message/stream")
-async def send_message_stream(conversation_id: str, request: SendMessageRequest):
+async def send_message_stream(conversation_id: str, request: SendMessageRequest, http_request: Request):
     """
     Отправка сообщения с потоковой передачей трёхэтапного процесса совета.
     Возвращает Server-Sent Events по мере завершения каждого этапа.
@@ -195,7 +197,11 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
 
     # Отмечаем устройство для разговоров без информации о нём
     if request.device_id:
-        storage.set_device_info(conversation_id, request.device_id, request.device_name)
+        storage.set_device_info(
+            conversation_id,
+            request.device_id,
+            http_request.client.host if http_request.client else None
+        )
 
     async def event_generator():
         try:

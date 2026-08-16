@@ -50,8 +50,8 @@ LLM Council — это трёхэтапная система обсуждени�
 
 **`storage.py`**
 - JSON-хранилище разговоров в `data/conversations/`
-- Каждый разговор: `{id, created_at, title, device_id, device_name, messages[]}`
-- `device_id`/`device_name` — с какого устройства/компьютера создан разговор (проставляются при создании; `set_device_info()` заполняет их у старых разговоров при первом сообщении с нового фронтенда)
+- Каждый разговор: `{id, created_at, title, device_id, device_ip, messages[]}`
+- `device_id`/`device_ip` — с какого устройства/компьютера создан разговор: `device_id` (UUID браузера) проставляется фронтендом при создании, `device_ip` (адрес клиента) берётся бэкендом из запроса; `set_device_info()` заполняет их у старых разговоров при первом сообщении с нового фронтенда
 - `delete_conversation()`: удаление файла разговора
 - Сообщения ассистента содержат: `{role, stage1, stage2, stage3}`
 - Важно: метаданные (label_to_model, aggregate_rankings) НЕ сохраняются в хранилище, только возвращаются через API
@@ -59,9 +59,9 @@ LLM Council — это трёхэтапная система обсуждени�
 **`main.py`**
 - FastAPI-приложение с CORS для localhost:5173 и localhost:3000
 - `GET /api/config` → `{api_key_configured, api_url_configured, api_url}` (ключ никогда не возвращается)
-- `GET /api/conversations` / `POST /api/conversations` (принимает `device_id`, `device_name`) / `GET /api/conversations/{id}`
+- `GET /api/conversations` / `POST /api/conversations` (принимает `device_id`; `device_ip` берётся из IP клиента) / `GET /api/conversations/{id}`
 - `DELETE /api/conversations/{id}?device_id=...`: удаление только «своего» разговора (чужой → 403; старые разговоры без device_id удалять можно)
-- `POST /api/conversations/{id}/message` и `/message/stream` — принимают `SendMessageRequest`: `content`, `mode` (по умолчанию `ensemble`), `api_key`, `api_url`, `device_id`, `device_name`
+- `POST /api/conversations/{id}/message` и `/message/stream` — принимают `SendMessageRequest`: `content`, `mode` (по умолчанию `ensemble`), `api_key`, `api_url`, `device_id`
 - Метаданные (возвращаются с сообщением) включают: режим, сопоставление label_to_model и агрегированные рейтинги
 
 ### Структура фронтенда (`frontend/src/`)
@@ -70,14 +70,14 @@ LLM Council — это трёхэтапная система обсуждени�
 - Основная оркестрация: управляет списком разговоров и текущим разговором
 - Обрабатывает отправку сообщений и хранение метаданных
 - Хранит выбранный режим (`mode`) и передаёт его в `api.sendMessageStream`
-- Управляет настройками: `settings` (apiKey, apiUrl, deviceName) из localStorage и `envConfig` с `GET /api/config`
+- Управляет настройками: `settings` (apiKey, apiUrl) из localStorage и `envConfig` с `GET /api/config`
 - Генерирует `device_id` (UUID) в localStorage (`llm_council_device_id`) — идентификатор компьютера/браузера
-- Передаёт в запросы: `api_key`/`api_url` (приоритет над .env) и `device_id`/`device_name`
+- Передаёт в запросы: `api_key`/`api_url` (приоритет над .env) и `device_id`
 - Удаляет разговоры через `handleDeleteConversation` (с подтверждением)
 - Важно: метаданные хранятся в состоянии UI для отображения, но не сохраняются в JSON бэкенда
 
 **`components/Sidebar.jsx`**
-- Список разговоров; у каждого подпись устройства: «С этого компьютера» (свой) или имя устройства владельца
+- Список разговоров; у каждого подпись устройства: «С этого компьютера» (свой) или IP адрес устройства владельца
 - Кнопка удаления «×» (при наведении) только для своих разговоров
 - Кнопка «Настройки API» внизу
 
@@ -85,7 +85,6 @@ LLM Council — это трёхэтапная система обсуждени�
 - Модалка настроек API: ключ (показ/скрытие/копирование) и URL
 - Если значения заданы в `.env` — они используются при пустых полях; введённое значение переопределяет их
 - Кнопка «Сбросить к .env» (видна, если есть сохранённые значения) — удаляет их из localStorage
-- Поле «Имя этого устройства» — для человекочитаемой метки компьютера в списке разговоров
 - Всё хранится только в localStorage (ключ `llm_council_settings`)
 
 **`components/ChatInterface.jsx`**
@@ -164,10 +163,11 @@ LLM Council — это трёхэтапная система обсуждени�
 Модели настраиваются через `.env` (переменные `COUNCIL_MODELS`, `CHAIRMAN_MODEL`, `ROLEPLAY_MODEL`, `TITLE_MODEL`). Председатель может совпадать с членами совета или отличаться от них. `TITLE_MODEL` по умолчанию = `CHAIRMAN_MODEL`. Текущее значение по умолчанию — Gemini в роли председателя и моделей ролей (по предпочтению пользователя).
 
 ### Настройки API и идентификация устройства (фронтенд)
-- Ключ и URL API можно вводить в UI (модалка «Настройки API»), они хранятся в localStorage (`llm_council_settings` = `{apiKey, apiUrl, deviceName}`).
+- Ключ и URL API можно вводить в UI (модалка «Настройки API»), они хранятся в localStorage (`llm_council_settings` = `{apiKey, apiUrl}`).
 - Приоритет: введённое значение → `.env` → `DEFAULT_OPENROUTER_URL`. Пустое поле = значение из `.env` не переопределяется (параметр просто не отправляется в запрос).
-- Кнопка «Сбросить к .env» очищает apiKey/apiUrl из localStorage (deviceName при этом сохраняется).
+- Кнопка «Сбросить к .env» очищает apiKey/apiUrl из localStorage.
 - `device_id` (UUID) генерируется один раз и хранится в localStorage (`llm_council_device_id`). Он помечает разговоры в бэкенде и определяет, какие из них можно удалить с этого компьютера.
+- Метка «с какого компьютера разговор» = IP клиента (`request.client.host`), который бэкенд видит при запросах. Работает при доступе по LAN к общему бэкенду.
 
 ### Парсинг SSE-потока
 Потоковый эндпоинт отдаёт Server-Sent Events, разделённые `\n\n`. Крупные события (stage1_complete ~40 КБ, stage2_complete ~65 КБ) могут прийти несколькими чанками, поэтому `api.js` накапливает данные в буфер и парсит события только по полному разделителю, декодируя с `stream: true` (чтобы не разрезать многобайтовые символы).
