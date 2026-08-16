@@ -44,17 +44,21 @@ OPENROUTER_API_KEY=sk-or-v1-...
 
 ### 3. Настройка моделей (необязательно)
 
-Отредактируйте `backend/config.py`, чтобы настроить совет:
+Отредактируйте `.env`, чтобы настроить совет:
 
-```python
-COUNCIL_MODELS = [
-    "openai/gpt-5.1",
-    "google/gemini-3-pro-preview",
-    "anthropic/claude-sonnet-4.5",
-    "x-ai/grok-4",
-]
+```bash
+# Члены совета — список идентификаторов моделей OpenRouter через запятую
+COUNCIL_MODELS=deepseek-v3.1,gemini-3-pro,gemma-3-27b,glm-4.6,gpt-5.1,gpt-oss-120b,grok-4,qwen3-30b-a3b
 
-CHAIRMAN_MODEL = "google/gemini-3-pro-preview"
+# Модель председателя — синтезирует итоговый ответ
+CHAIRMAN_MODEL=gemini-3-pro
+```
+
+Пример с единственным членом совета и другим председателем:
+
+```bash
+COUNCIL_MODELS=openai/gpt-5.1
+CHAIRMAN_MODEL=google/gemini-3-pro-preview
 ```
 
 ## Запуск приложения
