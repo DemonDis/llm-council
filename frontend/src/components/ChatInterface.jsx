@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import Stage1 from './Stage1';
 import Stage2 from './Stage2';
 import Stage3 from './Stage3';
-import './ChatInterface.css';
+import '../styles/ChatInterface.css';
 
 const MODES = [
   { value: 'roleplay', label: 'Ролевой мозговой штурм', description: null },

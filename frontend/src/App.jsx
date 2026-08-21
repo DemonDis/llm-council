@@ -4,7 +4,7 @@ import ChatInterface from './components/ChatInterface';
 import Settings from './components/Settings';
 import ConfirmDialog from './components/ConfirmDialog';
 import { api } from './api';
-import './App.css';
+import './styles/App.css';
 
 const SETTINGS_STORAGE_KEY = 'llm_council_settings';
 const DEVICE_ID_STORAGE_KEY = 'llm_council_device_id';

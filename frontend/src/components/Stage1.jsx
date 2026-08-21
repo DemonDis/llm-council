@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import './Stage1.css';
+import '../styles/Stage1.css';
 
 function getDisplayName(resp) {
   return resp.role || resp.model.split('/')[1] || resp.model;

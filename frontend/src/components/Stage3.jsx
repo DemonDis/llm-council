@@ -1,5 +1,5 @@
 import ReactMarkdown from 'react-markdown';
-import './Stage3.css';
+import '../styles/Stage3.css';
 
 function shortName(model) {
   return model.split('/')[1] || model;

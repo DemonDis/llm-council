@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import './Stage2.css';
+import '../styles/Stage2.css';
 
 function shortName(name) {
   return name.split('/')[1] || name;

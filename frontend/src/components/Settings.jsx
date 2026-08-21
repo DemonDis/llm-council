@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import './Settings.css';
+import '../styles/Settings.css';
 
 export default function Settings({ envConfig, settings, onSave, onClear, onClose }) {
   const [apiKey, setApiKey] = useState(settings.apiKey || '');

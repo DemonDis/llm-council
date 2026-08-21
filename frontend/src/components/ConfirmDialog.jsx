@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import './ConfirmDialog.css';
+import '../styles/ConfirmDialog.css';
 
 export default function ConfirmDialog({
   title = 'Подтверждение',
