@@ -18,7 +18,9 @@ LLM Council — это трёхэтапная система обсуждени�
 
 ### Структура бэкенда (`backend/`)
 
-**`config.py`**
+Модули приложения лежат в `backend/src/` (`config.py`, `council.py`, `openrouter.py`, `storage.py`); в `backend/` остаются только точка входа `main.py`, `roles.json` и `.env`.
+
+**`src/config.py`**
 - Содержит `COUNCIL_MODELS` (список идентификаторов моделей OpenRouter)
 - Содержит `CHAIRMAN_MODEL` (модель, которая синтезирует итоговый ответ) и `ROLEPLAY_MODEL` (модель для ролевого режима)
 - Содержит `TITLE_MODEL` (модель для генерации заголовков разговоров; по умолчанию = `CHAIRMAN_MODEL`)
@@ -26,14 +28,14 @@ LLM Council — это трёхэтапная система обсуждени�
 - `COUNCIL_ROLES` (роли для ролевого режима) загружается из `backend/roles.json` через `load_council_roles()`; ключи, начинающиеся с `_`, игнорируются (заметки); при отсутствии/пустом файле — встроенные `DEFAULT_COUNCIL_ROLES`
 - Бэкенд работает на **порту 8001** (НЕ 8000 — у пользователя другое приложение на 8000)
 
-**`openrouter.py`**
+**`src/openrouter.py`**
 - `query_model(model, messages, timeout, api_key=None, api_url=None)`: одиночный асинхронный запрос к модели; переданные `api_key`/`api_url` переопределяют значения из `.env`
 - `query_models_parallel(models, messages, api_key=None, api_url=None)`: параллельные запросы через `asyncio.gather()`
 - `DEFAULT_OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"` — используется, если URL не задан ни в `.env`, ни в запросе
 - Возвращает словарь с ключами 'content' и опциональным 'reasoning_details'
 - Изящная деградация: возвращает None при сбое и продолжает работу с успешными ответами
 
-**`council.py`** — ядро логики
+**`src/council.py`** — ядро логики
 - `MODE_ENSEMBLE` / `MODE_ROLEPLAY`: константы режимов
 - `get_display_name()`: возвращает имя для отображения — роль (если есть) или модель
 - `COUNCIL_ROLES` импортируется из `.config` (определён в `backend/roles.json` / `DEFAULT_COUNCIL_ROLES`)
@@ -53,7 +55,7 @@ LLM Council — это трёхэтапная система обсуждени�
 - `parse_ranking_from_text()`: извлекает секцию "FINAL RANKING:", обрабатывает и нумерованные списки, и обычный формат
 - `calculate_aggregate_rankings()`: вычисляет среднюю позицию по всем взаимным оценкам
 
-**`storage.py`**
+**`src/storage.py`**
 - JSON-хранилище разговоров в `data/conversations/`
 - Каждый разговор: `{id, created_at, title, mode, device_id, device_ip, messages[]}`
 - `mode` — режим разговора (`ensemble`/`roleplay`), задаётся при создании; `list_conversations(mode=...)` фильтрует по нему; для старых файлов без `mode` режим определяется по содержимому (`infer_conversation_mode()`: наличие `role` в stage1 → roleplay) и сохраняется обратно при первом чтении
@@ -157,8 +159,8 @@ LLM Council — это трёхэтапная система обсуждени�
 
 ## Важные детали реализации
 
-### Относительные импорты
-Все модули бэкенда используют относительные импорты (например, `from .config import ...`), а не абсолютные. Это критически важно для корректной работы модульной системы Python при запуске через `python -m backend.main`.
+### Плоские импорты и sys.path
+Модули в `backend/src/` импортируют друг друга «плоско» (`from config import ...`, `import storage`), а не относительно. `main.py` перед импортами добавляет `backend/src` в `sys.path` (константа `SRC_DIR`), поэтому бэкенд можно запускать и как `python backend/main.py`, и как `python -m backend.main` из корня проекта. В `__main__`-блоке `main.py` пути `backend/` и `backend/src/` также пробрасываются в `PYTHONPATH` для дочернего процесса uvicorn-релоадера.
 
 ### Конфигурация портов
 - Бэкенд: 8001 (изменён с 8000 для избежания конфликта)
@@ -183,7 +185,7 @@ LLM Council — это трёхэтапная система обсуждени�
 
 ## Частые проблемы
 
-1. **Ошибки импорта модулей**: всегда запускайте бэкенд как `python -m backend.main` из корня проекта, а не из каталога backend
+1. **Ошибки импорта модулей**: запускайте бэкенд как `python backend/main.py` или `python -m backend.main` из корня проекта; `sys.path` на `backend/src` настраивается автоматически в `main.py`
 2. **Проблемы CORS**: фронтенд должен соответствовать разрешённым источникам в CORS-мидлваре `main.py`
 3. **Сбои парсинга рейтингов**: если модели не следуют формату, запасной regex извлекает любые паттерны "Response X" по порядку
 4. **Отсутствующие метаданные**: метаданные эфемерны (не сохраняются), доступны только в ответах API

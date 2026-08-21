@@ -1,14 +1,25 @@
 """FastAPI бэкенд для LLM Council."""
 
+import os
+import sys
+import uuid
+import json
+import asyncio
+import socket
+from pathlib import Path
+
+# Модули приложения лежат в backend/src и импортируются «плоско»
+# (import storage, from config import ...), поэтому добавляем этот
+# каталог в sys.path до остальных импортов.
+SRC_DIR = str(Path(__file__).resolve().parent / "src")
+if SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-import uuid
-import json
-import asyncio
-import socket
 
 import storage
 from config import OPENROUTER_API_KEY, OPENROUTER_API_URL, COUNCIL_ROLES
@@ -388,19 +399,15 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
 
 
 if __name__ == "__main__":
-    import os
-    import sys
-    from pathlib import Path
-
     import uvicorn
 
     backend_dir = str(Path(__file__).resolve().parent)
 
     # Модули бэкенда импортируются «плоско» (import storage, from config ...),
-    # поэтому путь к backend/ должен быть и в текущем процессе, и в
-    # дочернем процессе uvicorn-релоадера (через PYTHONPATH).
-    sys.path.insert(0, backend_dir)
-    os.environ["PYTHONPATH"] = backend_dir + os.pathsep + os.environ.get("PYTHONPATH", "")
+    # поэтому backend/ и backend/src/ должны быть в пути и в текущем процессе,
+    # и в дочернем процессе uvicorn-релоадера (через PYTHONPATH).
+    extra_paths = os.pathsep.join([backend_dir, SRC_DIR])
+    os.environ["PYTHONPATH"] = extra_paths + os.pathsep + os.environ.get("PYTHONPATH", "")
 
     uvicorn.run(
         "main:app",  # строка импорта обязательна для reload=True

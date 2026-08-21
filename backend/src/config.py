@@ -5,11 +5,12 @@ import json
 from pathlib import Path
 from dotenv import load_dotenv
 
-env_path = os.path.join(os.path.dirname(__file__), '.env')
+# .env лежит в backend/ — на уровень выше этого файла
+env_path = os.path.join(os.path.dirname(__file__), '..', '.env')
 load_dotenv(env_path)
 
-# Корень проекта (каталог на уровень выше backend/)
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+# Корень проекта (каталог на два уровня выше backend/src/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Ключ API OpenRouter
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -69,7 +70,7 @@ def load_council_roles() -> dict:
 
     Путь к файлу: backend/roles.json (переопределяется через COUNCIL_ROLES_FILE).
     """
-    roles_file = os.getenv("COUNCIL_ROLES_FILE", str(Path(__file__).parent / "roles.json"))
+    roles_file = os.getenv("COUNCIL_ROLES_FILE", str(Path(__file__).parent.parent / "roles.json"))
     path = Path(roles_file)
 
     if path.exists():
