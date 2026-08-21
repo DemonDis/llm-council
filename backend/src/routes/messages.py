@@ -17,7 +17,7 @@ from council import (
     stage1_collect_roleplay_stream,
     stage2_collect_rankings_stream,
     stage3_synthesize_final_stream,
-    get_display_name,
+    build_label_to_model,
     MODE_ROLEPLAY,
 )
 from schemas import SendMessageRequest
@@ -182,11 +182,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
                             "parsed_ranking": chunk["parsed_ranking"],
                         })
                 # label_to_model вычисляется из stage1_results (детерминировано)
-                labels = [chr(65 + i) for i in range(len(stage1_results))]
-                label_to_model = {
-                    f"Response {label}": get_display_name(result)
-                    for label, result in zip(labels, stage1_results)
-                }
+                label_to_model = build_label_to_model(stage1_results)
             else:
                 stage2_results, label_to_model = await stage2_collect_rankings(
                     request.content, stage1_results, request.mode,

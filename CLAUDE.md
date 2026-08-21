@@ -18,7 +18,7 @@ LLM Council — это трёхэтапная система обсуждени�
 
 ### Структура бэкенда (`backend/`)
 
-Модули приложения лежат в `backend/src/` (`config.py`, `council.py`, `openrouter.py`, `storage.py`, плюс `schemas.py`, `utils.py` и роутеры в `routes/`); в `backend/` остаются только точка входа `main.py`, `roles.json` и `.env`.
+Модули приложения лежат в `backend/src/` (`config.py`, `openrouter.py`, `storage.py`, пакет `council/`, плюс `schemas.py`, `utils.py` и роутеры в `routes/`); в `backend/` остаются только точка входа `main.py`, `roles.json` и `.env`.
 
 **`src/config.py`**
 - Содержит `COUNCIL_MODELS` (список идентификаторов моделей OpenRouter)
@@ -35,25 +35,15 @@ LLM Council — это трёхэтапная система обсуждени�
 - Возвращает словарь с ключами 'content' и опциональным 'reasoning_details'
 - Изящная деградация: возвращает None при сбое и продолжает работу с успешными ответами
 
-**`src/council.py`** — ядро логики
-- `MODE_ENSEMBLE` / `MODE_ROLEPLAY`: константы режимов
-- `get_display_name()`: возвращает имя для отображения — роль (если есть) или модель
+**`src/council/`** — пакет, ядро логики (бывший `council.py`). `__init__.py` реэкспортирует весь публичный API, поэтому внешние импорты не менялись: `from council import run_full_council, ...`
+- **`common.py`**: `MODE_ENSEMBLE` / `MODE_ROLEPLAY` (константы режимов), `get_display_name()` (роль или модель для отображения), `make_labels()` / `build_label_to_model()` (анонимные метки «Response A, B...» и сопоставление для деанонимизации)
+- **`prompts.py`**: все текстовые промпты в одном экземпляре — `build_ranking_prompt()`, `build_chairman_prompt()` (варианты для ensemble/roleplay), `build_title_prompt()`, `combine_system_and_user()` (обёртка «System Instruction: ... / User Query: ...» для моделей без role="system")
+- **`ranking.py`**: `parse_ranking_from_text()` — извлекает секцию "FINAL RANKING:" (нумерованные списки и запасной формат); `calculate_aggregate_rankings()` — средняя позиция по всем взаимным оценкам
+- **`stage1.py`**: сбор ответов. `stage1_collect_responses(user_query, mode, ...)` диспетчеризует по режиму: `stage1_collect_ensemble()` (параллельные запросы ко всем моделям) или `stage1_collect_roleplay()` / `stage1_collect_roleplay_stream()` (запросы к `ROLEPLAY_MODEL`, каждая роль со своим системным промптом; стрим отдаёт события start/active/chunk/done)
+- **`stage2.py`**: `stage2_collect_rankings(user_query, stage1_results, mode, ...)` и `..._stream()`. Анонимизация через метки, строгий формат рейтинга ("FINAL RANKING:"); возвращает (рейтинги с `parsed_ranking`, `label_to_model`)
+- **`stage3.py`**: `stage3_synthesize_final(...)` и `..._stream()` — председатель синтезирует итог из ответов и рейтингов
+- **`pipeline.py`**: `run_full_council(user_query, mode, api_key=None, api_url=None)` — полный трёхэтапный процесс + агрегация; `generate_conversation_title(user_query, ...)` — короткий заголовок через `TITLE_MODEL` (таймаут 30 c)
 - `COUNCIL_ROLES` импортируется из `.config` (определён в `backend/roles.json` / `DEFAULT_COUNCIL_ROLES`)
-- `stage1_collect_responses(user_query, mode, api_key=None, api_url=None)`:
-  - `stage1_collect_ensemble()`: параллельные запросы ко всем моделям совета (одинаковый промпт)
-  - `stage1_collect_roleplay()`: параллельные запросы к `ROLEPLAY_MODEL`, каждая роль со своим системным промптом
-- `stage2_collect_rankings(user_query, stage1_results, mode, api_key=None, api_url=None)`:
-  - Анонимизирует ответы как "Response A, B, C и т.д."
-  - Создаёт сопоставление `label_to_model` для деанонимизации (в ролевом режиме — на роли)
-  - В ролевом режиме каждая роль (со своим системным промптом) оценивает ответы остальных
-  - Просит модели оценить и проранжировать (со строгими требованиями к формату)
-  - Возвращает кортеж: (список_рейтингов, словарь_label_to_model)
-  - Каждый рейтинг включает и сырой текст, и список `parsed_ranking`
-- `stage3_synthesize_final(user_query, stage1_results, stage2_results, mode, api_key=None, api_url=None)`: председатель синтезирует ответ из всех ответов и рейтингов (разные промпты для разных режимов)
-- `generate_conversation_title(user_query, api_key=None, api_url=None)`: короткий заголовок через `TITLE_MODEL` (таймаут 30 c)
-- `run_full_council(user_query, mode, api_key=None, api_url=None)`: полный трёхэтапный процесс
-- `parse_ranking_from_text()`: извлекает секцию "FINAL RANKING:", обрабатывает и нумерованные списки, и обычный формат
-- `calculate_aggregate_rankings()`: вычисляет среднюю позицию по всем взаимным оценкам
 
 **`src/storage.py`**
 - JSON-хранилище разговоров в `data/conversations/`
