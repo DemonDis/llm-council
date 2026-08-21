@@ -42,7 +42,7 @@ export default function Settings({ envConfig, settings, onSave, onClear, onClose
         </div>
 
         <div className="settings-section">
-          <label>API-ключ (OPENROUTER_API_KEY)</label>
+          <label>API-ключ</label>
           <div className="settings-field">
             <input
               type={showKey ? 'text' : 'password'}
@@ -73,6 +73,10 @@ export default function Settings({ envConfig, settings, onSave, onClear, onClose
             <div className="settings-hint">
               Ключ задан в .env. Если поле пустое — используется он. Введите свой ключ, чтобы
               переопределить его.
+              <div>
+              Сохранённые значения имеют приоритет над .env и хранятся только в localStorage вашего
+              браузера. «Сбросить к .env» удаляет их и возвращает настройки из конфигурации.
+              </div>
             </div>
           )}
         </div>
@@ -86,11 +90,6 @@ export default function Settings({ envConfig, settings, onSave, onClear, onClose
               Сбросить к .env
             </button>
           )}
-        </div>
-
-        <div className="settings-note">
-          Сохранённые значения имеют приоритет над .env и хранятся только в localStorage вашего
-          браузера. «Сбросить к .env» удаляет их и возвращает настройки из конфигурации.
         </div>
       </div>
     </div>
