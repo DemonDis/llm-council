@@ -105,7 +105,31 @@ export default function ChatInterface({
   roles,
 }) {
   const [input, setInput] = useState('');
+  const [inputHeight, setInputHeight] = useState(72);
   const messagesEndRef = useRef(null);
+
+  const INPUT_MIN_HEIGHT = 48;
+  const INPUT_MAX_HEIGHT = 240;
+  const INPUT_DEFAULT_HEIGHT = 72;
+
+  // Тянем верхний край поля: движение мыши вверх увеличивает высоту
+  const handleResizeStart = (e) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = inputHeight;
+    const onMove = (ev) => {
+      const next = startHeight + (startY - ev.clientY);
+      setInputHeight(
+        Math.min(INPUT_MAX_HEIGHT, Math.max(INPUT_MIN_HEIGHT, next))
+      );
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -242,15 +266,24 @@ export default function ChatInterface({
       </div>
 
       <form className="input-form" onSubmit={handleSubmit}>
-        <textarea
-          className="message-input"
-          placeholder="Задайте вопрос... (Shift+Enter — новая строка)"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isLoading}
-          rows={2}
-        />
+        <div className="input-wrapper">
+          <div
+            className="input-resize-handle"
+            onPointerDown={handleResizeStart}
+            onDoubleClick={() => setInputHeight(INPUT_DEFAULT_HEIGHT)}
+            title="Потяните вверх, чтобы расширить (двойной клик — сброс)"
+          />
+          <textarea
+            className="message-input"
+            style={{ height: inputHeight }}
+            placeholder="Задайте вопрос... (Shift+Enter — новая строка)"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isLoading}
+            rows={2}
+          />
+        </div>
         <button
           type="submit"
           className="send-button"
