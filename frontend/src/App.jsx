@@ -39,6 +39,24 @@ function loadDeviceId() {
   return id;
 }
 
+// Иммутабельно обновляет последнее сообщение разговора.
+// Важно: updater-функции в StrictMode вызываются React дважды, поэтому
+// мутировать объекты из prev нельзя — иначе чанки стрима добавляются по два раза.
+function updateLastMessage(prev, transform) {
+  if (!prev?.messages?.length) return prev;
+  const messages = [...prev.messages];
+  const last = messages[messages.length - 1];
+  const clone = {
+    ...last,
+    loading: { ...last.loading },
+    streamingSlots: { ...last.streamingSlots },
+    streamingSlotsStage2: { ...last.streamingSlotsStage2 },
+    streamingStage3: last.streamingStage3 ? { ...last.streamingStage3 } : null,
+  };
+  messages[messages.length - 1] = transform(clone);
+  return { ...prev, messages };
+}
+
 function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
@@ -174,166 +192,165 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
         (eventType, event) => {
           switch (eventType) {
             case 'stage1_start':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                lastMsg.loading.stage1 = true;
-                if (event.roles_total) {
-                  lastMsg.rolesTotal = event.roles_total;
-                }
-                return { ...prev, messages };
-              });
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => ({
+                  ...m,
+                  loading: { ...m.loading, stage1: true },
+                  rolesTotal: event.roles_total || m.rolesTotal,
+                }))
+              );
               break;
 
             case 'stage1_complete':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                lastMsg.stage1 = event.data;
-                lastMsg.loading.stage1 = false;
-                lastMsg.streamingSlots = {};
-                lastMsg.activeRoleIndex = -1;
-                return { ...prev, messages };
-              });
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => ({
+                  ...m,
+                  stage1: event.data,
+                  loading: { ...m.loading, stage1: false },
+                  streamingSlots: {},
+                  activeRoleIndex: -1,
+                }))
+              );
               break;
 
             case 'stage1_role_start':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                lastMsg.streamingSlots = {
-                  ...lastMsg.streamingSlots,
-                  [event.index]: { role: event.role, response: '' },
-                };
-                return { ...prev, messages };
-              });
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => ({
+                  ...m,
+                  streamingSlots: {
+                    ...m.streamingSlots,
+                    [event.index]: { role: event.role, response: '' },
+                  },
+                }))
+              );
               break;
 
             case 'stage1_role_active':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                lastMsg.activeRoleIndex = event.index;
-                return { ...prev, messages };
-              });
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => ({
+                  ...m,
+                  activeRoleIndex: event.index,
+                }))
+              );
               break;
 
             case 'stage1_chunk':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                const slots = { ...lastMsg.streamingSlots };
-                if (slots[event.index]) {
-                  slots[event.index] = {
-                    ...slots[event.index],
-                    response: slots[event.index].response + event.content,
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => {
+                  const slot = m.streamingSlots[event.index];
+                  if (!slot) return m;
+                  return {
+                    ...m,
+                    streamingSlots: {
+                      ...m.streamingSlots,
+                      [event.index]: { ...slot, response: slot.response + event.content },
+                    },
                   };
-                }
-                lastMsg.streamingSlots = slots;
-                return { ...prev, messages };
-              });
+                })
+              );
               break;
 
             case 'stage3_role_start':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                lastMsg.streamingStage3 = { model: event.model, response: '' };
-                return { ...prev, messages };
-              });
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => ({
+                  ...m,
+                  streamingStage3: { model: event.model, response: '' },
+                }))
+              );
               break;
 
             case 'stage3_chunk':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                if (lastMsg.streamingStage3) {
-                  lastMsg.streamingStage3 = {
-                    ...lastMsg.streamingStage3,
-                    response: lastMsg.streamingStage3.response + event.content,
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => {
+                  if (!m.streamingStage3) return m;
+                  return {
+                    ...m,
+                    streamingStage3: {
+                      ...m.streamingStage3,
+                      response: m.streamingStage3.response + event.content,
+                    },
                   };
-                }
-                return { ...prev, messages };
-              });
+                })
+              );
               break;
 
             case 'stage2_start':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                lastMsg.loading.stage2 = true;
-                return { ...prev, messages };
-              });
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => ({
+                  ...m,
+                  loading: { ...m.loading, stage2: true },
+                }))
+              );
               break;
 
             case 'stage2_role_start':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                lastMsg.streamingSlotsStage2 = {
-                  ...lastMsg.streamingSlotsStage2,
-                  [event.index]: { role: event.role, ranking: '' },
-                };
-                return { ...prev, messages };
-              });
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => ({
+                  ...m,
+                  streamingSlotsStage2: {
+                    ...m.streamingSlotsStage2,
+                    [event.index]: { role: event.role, ranking: '' },
+                  },
+                }))
+              );
               break;
 
             case 'stage2_role_active':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                lastMsg.activeRoleIndexStage2 = event.index;
-                return { ...prev, messages };
-              });
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => ({
+                  ...m,
+                  activeRoleIndexStage2: event.index,
+                }))
+              );
               break;
 
             case 'stage2_chunk':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                const slots = { ...lastMsg.streamingSlotsStage2 };
-                if (slots[event.index]) {
-                  slots[event.index] = {
-                    ...slots[event.index],
-                    ranking: slots[event.index].ranking + event.content,
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => {
+                  const slot = m.streamingSlotsStage2[event.index];
+                  if (!slot) return m;
+                  return {
+                    ...m,
+                    streamingSlotsStage2: {
+                      ...m.streamingSlotsStage2,
+                      [event.index]: { ...slot, ranking: slot.ranking + event.content },
+                    },
                   };
-                }
-                lastMsg.streamingSlotsStage2 = slots;
-                return { ...prev, messages };
-              });
+                })
+              );
               break;
 
             case 'stage2_complete':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                lastMsg.stage2 = event.data;
-                lastMsg.metadata = event.metadata;
-                lastMsg.loading.stage2 = false;
-                lastMsg.streamingSlotsStage2 = {};
-                lastMsg.activeRoleIndexStage2 = -1;
-                return { ...prev, messages };
-              });
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => ({
+                  ...m,
+                  stage2: event.data,
+                  metadata: event.metadata,
+                  loading: { ...m.loading, stage2: false },
+                  streamingSlotsStage2: {},
+                  activeRoleIndexStage2: -1,
+                }))
+              );
               break;
 
             case 'stage3_start':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                lastMsg.loading.stage3 = true;
-                return { ...prev, messages };
-              });
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => ({
+                  ...m,
+                  loading: { ...m.loading, stage3: true },
+                }))
+              );
               break;
 
             case 'stage3_complete':
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                lastMsg.stage3 = event.data;
-                lastMsg.loading.stage3 = false;
-                lastMsg.streamingStage3 = null;
-                return { ...prev, messages };
-              });
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => ({
+                  ...m,
+                  stage3: event.data,
+                  loading: { ...m.loading, stage3: false },
+                  streamingStage3: null,
+                }))
+              );
               break;
 
             case 'title_complete':
@@ -349,14 +366,12 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
 
             case 'error':
               console.error('Stream error:', event.message);
-              setCurrentConversation((prev) => {
-                const messages = [...prev.messages];
-                const lastMsg = messages[messages.length - 1];
-                if (lastMsg?.loading) {
-                  lastMsg.loading = { stage1: false, stage2: false, stage3: false };
-                }
-                return { ...prev, messages };
-              });
+              setCurrentConversation((prev) =>
+                updateLastMessage(prev, (m) => ({
+                  ...m,
+                  loading: { stage1: false, stage2: false, stage3: false },
+                }))
+              );
               setIsLoading(false);
               break;
 
