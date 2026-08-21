@@ -384,5 +384,24 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
 
 
 if __name__ == "__main__":
+    import os
+    import sys
+    from pathlib import Path
+
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+
+    backend_dir = str(Path(__file__).resolve().parent)
+
+    # Модули бэкенда импортируются «плоско» (import storage, from config ...),
+    # поэтому путь к backend/ должен быть и в текущем процессе, и в
+    # дочернем процессе uvicorn-релоадера (через PYTHONPATH).
+    sys.path.insert(0, backend_dir)
+    os.environ["PYTHONPATH"] = backend_dir + os.pathsep + os.environ.get("PYTHONPATH", "")
+
+    uvicorn.run(
+        "main:app",  # строка импорта обязательна для reload=True
+        host="0.0.0.0",
+        port=8001,
+        reload=True,
+        reload_dirs=[backend_dir],
+    )
