@@ -36,13 +36,12 @@ export const api = {
   },
 
   /**
-   * Delete a conversation (only allowed from the device that created it).
+   * Delete a conversation (only allowed from the computer that created it).
    * @param {string} conversationId - The conversation ID
-   * @param {string} deviceId - The current device ID
    */
-  async deleteConversation(conversationId, deviceId) {
+  async deleteConversation(conversationId) {
     const response = await fetch(
-      `${API_BASE}/api/conversations/${conversationId}?device_id=${encodeURIComponent(deviceId)}`,
+      `${API_BASE}/api/conversations/${conversationId}`,
       {
         method: 'DELETE',
       }
@@ -54,7 +53,7 @@ export const api = {
   },
 
   /**
-   * List all conversations.
+   * List conversations created from this computer (matched by client IP on the backend).
    */
   async listConversations() {
     const response = await fetch(`${API_BASE}/api/conversations`);

@@ -155,9 +155,15 @@ def set_device_info(
     if conversation is None:
         raise ValueError(f"Conversation {conversation_id} not found")
 
+    changed = False
     if conversation.get("device_id") is None and device_id:
         conversation["device_id"] = device_id
+        changed = True
+    if conversation.get("device_ip") in (None, "127.0.0.1", "::1", "localhost") and device_ip:
+        # Заполняем отсутствующий или устаревший loopback-адрес реальным сетевым IP
         conversation["device_ip"] = device_ip
+        changed = True
+    if changed:
         save_conversation(conversation)
 
 

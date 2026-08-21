@@ -106,7 +106,7 @@ function App() {
   const handleDeleteConversation = async (id) => {
     if (!window.confirm('Удалить этот разговор?')) return;
     try {
-      await api.deleteConversation(id, deviceId);
+      await api.deleteConversation(id);
       setConversations((prev) => prev.filter((c) => c.id !== id));
       if (currentConversationId === id) {
         setCurrentConversationId(null);
@@ -388,7 +388,6 @@ function App() {
       <Sidebar
         conversations={conversations}
         currentConversationId={currentConversationId}
-        deviceId={deviceId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
         onDeleteConversation={handleDeleteConversation}

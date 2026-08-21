@@ -1,19 +1,10 @@
 import './Sidebar.css';
 
-function getDeviceLabel(conv, deviceId) {
-  if (conv.device_id === deviceId) return 'С этого компьютера';
-  if (conv.device_ip) return conv.device_ip;
-  return 'Другой компьютер';
-}
-
-function isOwn(conv, deviceId) {
-  return conv.device_id === deviceId || !conv.device_id;
-}
-
+// Список уже отфильтрован на бэкенде по IP — все разговоры отсюда,
+// с этого компьютера.
 export default function Sidebar({
   conversations,
   currentConversationId,
-  deviceId,
   onSelectConversation,
   onNewConversation,
   onDeleteConversation,
@@ -44,22 +35,20 @@ export default function Sidebar({
                 <div className="conversation-title">
                   {conv.title || 'Новый разговор'}
                 </div>
-                {isOwn(conv, deviceId) && (
-                  <button
-                    className="conversation-delete"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteConversation(conv.id);
-                    }}
-                    title="Удалить разговор"
-                    aria-label="Удалить разговор"
-                  >
-                    ×
-                  </button>
-                )}
+                <button
+                  className="conversation-delete"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteConversation(conv.id);
+                  }}
+                  title="Удалить разговор"
+                  aria-label="Удалить разговор"
+                >
+                  ×
+                </button>
               </div>
               <div className="conversation-meta">
-                {conv.message_count} сообщений · {getDeviceLabel(conv, deviceId)}
+                {conv.message_count} сообщений · С этого компьютера
               </div>
             </div>
           ))

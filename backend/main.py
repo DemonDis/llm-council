@@ -8,12 +8,34 @@ from typing import List, Dict, Any, Optional
 import uuid
 import json
 import asyncio
+import socket
 
 import storage
 from config import OPENROUTER_API_KEY, OPENROUTER_API_URL, COUNCIL_ROLES
 from council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings, stage1_collect_roleplay_stream, stage2_collect_rankings_stream, stage3_synthesize_final_stream, get_display_name, MODE_ROLEPLAY
 
 app = FastAPI(title="LLM Council API")
+
+
+def _get_lan_ip() -> str:
+    """Определяет локальный сетевой IP машины (например, 192.168.x.x)."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # Соединение не отправляет пакеты, только определяет маршрут по умолчанию
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+    finally:
+        s.close()
+
+
+def get_client_ip(http_request: Request) -> Optional[str]:
+    """IP клиента; для localhost возвращается реальный сетевой IP машины."""
+    host = http_request.client.host if http_request.client else None
+    if host in ("127.0.0.1", "::1", "localhost"):
+        return _get_lan_ip()
+    return host
 
 # Включаем CORS для локальной разработки
 app.add_middleware(
@@ -77,9 +99,18 @@ async def get_config():
 
 
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
-async def list_conversations():
-    """Список всех разговоров (только метаданные)."""
-    return storage.list_conversations()
+async def list_conversations(request: Request):
+    """
+    Список разговоров текущего компьютера (только метаданные).
+
+    Возвращаются только разговоры, созданные с этого же сетевого IP.
+    """
+    client_ip = get_client_ip(request)
+    return [
+        c
+        for c in storage.list_conversations()
+        if c.get("device_ip") == client_ip
+    ]
 
 
 @app.post("/api/conversations", response_model=Conversation)
@@ -89,26 +120,27 @@ async def create_conversation(request: CreateConversationRequest, http_request: 
     conversation = storage.create_conversation(
         conversation_id,
         device_id=request.device_id,
-        device_ip=http_request.client.host if http_request.client else None
+        device_ip=get_client_ip(http_request)
     )
     return conversation
 
 
 @app.delete("/api/conversations/{conversation_id}")
-async def delete_conversation(conversation_id: str, device_id: str):
+async def delete_conversation(conversation_id: str, http_request: Request):
     """
     Удаление разговора.
 
-    Разговор можно удалить только с устройства, на котором он был создан.
-    Разговоры, созданные до появления этой функции (без device_id), удалять разрешено.
+    Разговор можно удалить только с компьютера, с которого он был создан
+    (совпадение сетевого IP). Разговоры без информации об устройстве
+    (созданные до появления этой функции) удалять разрешено.
     """
     conversation = storage.get_conversation(conversation_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
-    conv_device_id = conversation.get("device_id")
-    if conv_device_id and conv_device_id != device_id:
-        raise HTTPException(status_code=403, detail="Cannot delete another device's conversation")
+    conv_device_ip = conversation.get("device_ip")
+    if conv_device_ip and conv_device_ip != get_client_ip(http_request):
+        raise HTTPException(status_code=403, detail="Cannot delete another computer's conversation")
 
     storage.delete_conversation(conversation_id)
     return {"status": "deleted", "id": conversation_id}
@@ -142,7 +174,7 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
         storage.set_device_info(
             conversation_id,
             request.device_id,
-            http_request.client.host if http_request.client else None
+            get_client_ip(http_request)
         )
 
     # Добавляем сообщение пользователя
@@ -201,7 +233,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
         storage.set_device_info(
             conversation_id,
             request.device_id,
-            http_request.client.host if http_request.client else None
+            get_client_ip(http_request)
         )
 
     async def event_generator():
