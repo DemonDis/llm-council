@@ -39,25 +39,17 @@ function loadDeviceId() {
   return id;
 }
 
-function CouncilPage({ mode }) {
+function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [settings, setSettings] = useState(loadSettings);
-  const [envConfig, setEnvConfig] = useState(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [deviceId] = useState(loadDeviceId);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Load conversations and backend config on mount
+  // Load conversations on mount
   useEffect(() => {
     loadConversations();
-    api
-      .getConfig()
-      .then(setEnvConfig)
-      .catch((error) => console.error('Failed to load config:', error));
   }, []);
 
   // Load conversation details when selected
@@ -126,16 +118,6 @@ function CouncilPage({ mode }) {
     } finally {
       setIsDeleting(false);
     }
-  };
-
-  const handleSaveSettings = (newSettings) => {
-    setSettings(newSettings);
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
-  };
-
-  const handleClearSettings = () => {
-    setSettings({ apiKey: '' });
-    localStorage.removeItem(SETTINGS_STORAGE_KEY);
   };
 
   // Локальные значения из настроек имеют приоритет над .env.
@@ -402,7 +384,7 @@ function CouncilPage({ mode }) {
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
         onDeleteConversation={setDeleteTarget}
-        onOpenSettings={() => setShowSettings(true)}
+        onOpenSettings={onOpenSettings}
       />
       <ChatInterface
         conversation={currentConversation}
@@ -410,15 +392,6 @@ function CouncilPage({ mode }) {
         isLoading={isLoading}
         mode={mode}
       />
-      {showSettings && (
-        <Settings
-          envConfig={envConfig}
-          settings={settings}
-          onSave={handleSaveSettings}
-          onClear={handleClearSettings}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
       {deleteTarget && (
         <ConfirmDialog
           title="Удалить этот разговор?"
@@ -435,15 +408,91 @@ function CouncilPage({ mode }) {
   );
 }
 
-export default function App() {
+// Страница-заглушка «Планировщик»: тот же каркас с сайдбаром,
+// но без разговоров, пока режим не реализован на бэкенде.
+function PlannerPage({ onOpenSettings }) {
   return (
-    <Routes>
-      <Route path="/ensemble" element={<CouncilPage key="ensemble" mode="ensemble" />} />
-      <Route path="/roleplay" element={<CouncilPage key="roleplay" mode="roleplay" />} />
-      {/* Заглушка: режим пока не реализован на бэкенде */}
-      <Route path="/planner" element={<PlannerStub />} />
-      {/* Ролевой режим — основной сценарий, открывается по умолчанию */}
-      <Route path="*" element={<Navigate to="/roleplay" replace />} />
-    </Routes>
+    <div className="app">
+      <Sidebar
+        conversations={[]}
+        currentConversationId={null}
+        onSelectConversation={() => {}}
+        onNewConversation={null}
+        onDeleteConversation={() => {}}
+        onOpenSettings={onOpenSettings}
+      />
+      <PlannerStub />
+    </div>
+  );
+}
+
+export default function App() {
+  const [settings, setSettings] = useState(loadSettings);
+  const [envConfig, setEnvConfig] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [deviceId] = useState(loadDeviceId);
+
+  // Backend config нужен только модалке настроек — грузим один раз на всё приложение
+  useEffect(() => {
+    api
+      .getConfig()
+      .then(setEnvConfig)
+      .catch((error) => console.error('Failed to load config:', error));
+  }, []);
+
+  const handleSaveSettings = (newSettings) => {
+    setSettings(newSettings);
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
+  };
+
+  const handleClearSettings = () => {
+    setSettings({ apiKey: '' });
+    localStorage.removeItem(SETTINGS_STORAGE_KEY);
+  };
+
+  const openSettings = () => setShowSettings(true);
+
+  return (
+    <>
+      <Routes>
+        <Route
+          path="/ensemble"
+          element={
+            <CouncilPage
+              key="ensemble"
+              mode="ensemble"
+              deviceId={deviceId}
+              settings={settings}
+              onOpenSettings={openSettings}
+            />
+          }
+        />
+        <Route
+          path="/roleplay"
+          element={
+            <CouncilPage
+              key="roleplay"
+              mode="roleplay"
+              deviceId={deviceId}
+              settings={settings}
+              onOpenSettings={openSettings}
+            />
+          }
+        />
+        {/* Заглушка: режим пока не реализован на бэкенде */}
+        <Route path="/planner" element={<PlannerPage onOpenSettings={openSettings} />} />
+        {/* Ролевой режим — основной сценарий, открывается по умолчанию */}
+        <Route path="*" element={<Navigate to="/roleplay" replace />} />
+      </Routes>
+      {showSettings && (
+        <Settings
+          envConfig={envConfig}
+          settings={settings}
+          onSave={handleSaveSettings}
+          onClear={handleClearSettings}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+    </>
   );
 }

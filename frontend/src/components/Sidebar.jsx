@@ -36,7 +36,12 @@ export default function Sidebar({
     <div className="sidebar">
       <div className="sidebar-header">
         <h1>LLM Council</h1>
-        <button className="new-conversation-btn" onClick={onNewConversation}>
+        <button
+          className="new-conversation-btn"
+          onClick={onNewConversation}
+          disabled={!onNewConversation}
+          title={onNewConversation ? undefined : 'Режим ещё в разработке'}
+        >
           Новый разговор
         </button>
       </div>
