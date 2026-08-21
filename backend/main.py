@@ -50,6 +50,7 @@ app.add_middleware(
 class CreateConversationRequest(BaseModel):
     """Запрос на создание нового разговора."""
     device_id: Optional[str] = None
+    mode: str = "ensemble"
 
 
 class SendMessageRequest(BaseModel):
@@ -68,6 +69,7 @@ class ConversationMetadata(BaseModel):
     id: str
     created_at: str
     title: str
+    mode: str = "ensemble"
     message_count: int
     device_id: Optional[str] = None
     device_ip: Optional[str] = None
@@ -99,16 +101,17 @@ async def get_config():
 
 
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
-async def list_conversations(request: Request):
+async def list_conversations(request: Request, mode: Optional[str] = None):
     """
     Список разговоров текущего компьютера (только метаданные).
 
     Возвращаются только разговоры, созданные с этого же сетевого IP.
+    Параметр mode ('ensemble' | 'roleplay') фильтрует по режиму разговора.
     """
     client_ip = get_client_ip(request)
     return [
         c
-        for c in storage.list_conversations()
+        for c in storage.list_conversations(mode=mode)
         if c.get("device_ip") == client_ip
     ]
 
@@ -120,7 +123,8 @@ async def create_conversation(request: CreateConversationRequest, http_request: 
     conversation = storage.create_conversation(
         conversation_id,
         device_id=request.device_id,
-        device_ip=get_client_ip(http_request)
+        device_ip=get_client_ip(http_request),
+        mode=request.mode
     )
     return conversation
 

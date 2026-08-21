@@ -1,7 +1,13 @@
+import { NavLink } from 'react-router-dom';
 import '../styles/Sidebar.css';
 
-// Список уже отфильтрован на бэкенде по IP — все разговоры отсюда,
-// с этого компьютера.
+const PAGES = [
+  { path: '/roleplay', label: 'Ролевой штурм' },
+  { path: '/ensemble', label: 'Битва моделей' },
+];
+
+// Список уже отфильтрован на бэкенде по IP и режиму страницы —
+// все разговоры отсюда, с этого компьютера.
 export default function Sidebar({
   conversations,
   currentConversationId,
@@ -18,6 +24,25 @@ export default function Sidebar({
           Новый разговор
         </button>
       </div>
+
+      <nav className="page-tabs">
+        {PAGES.map((page) => (
+          <NavLink
+            key={page.path}
+            to={page.path}
+            className={({ isActive }) =>
+              `page-tab ${isActive ? 'active' : ''}`
+            }
+            title={
+              page.path === '/roleplay'
+                ? 'Вопрос цифровым личностям из roles.json'
+                : 'Один вопрос — разным моделям совета'
+            }
+          >
+            {page.label}
+          </NavLink>
+        ))}
+      </nav>
 
       <div className="conversation-list">
         {conversations.length === 0 ? (

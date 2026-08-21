@@ -21,7 +21,8 @@ def get_conversation_path(conversation_id: str) -> str:
 def create_conversation(
     conversation_id: str,
     device_id: Optional[str] = None,
-    device_ip: Optional[str] = None
+    device_ip: Optional[str] = None,
+    mode: str = "ensemble"
 ) -> Dict[str, Any]:
     """
     Создание нового разговора.
@@ -30,6 +31,7 @@ def create_conversation(
         conversation_id: Уникальный идентификатор разговора
         device_id: Идентификатор устройства/браузера, создавшего разговор
         device_ip: IP-адрес устройства, создавшего разговор
+        mode: Режим совета ('ensemble' или 'roleplay')
 
     Returns:
         Словарь нового разговора
@@ -40,6 +42,7 @@ def create_conversation(
         "id": conversation_id,
         "created_at": datetime.utcnow().isoformat(),
         "title": "New Conversation",
+        "mode": mode,
         "device_id": device_id,
         "device_ip": device_ip,
         "messages": []
@@ -86,9 +89,27 @@ def save_conversation(conversation: Dict[str, Any]):
         json.dump(conversation, f, indent=2, ensure_ascii=False)
 
 
-def list_conversations() -> List[Dict[str, Any]]:
+def infer_conversation_mode(data: Dict[str, Any]) -> str:
+    """
+    Определяет режим разговора для старых файлов без поля 'mode'.
+
+    В ролевом режиме ответы этапа 1 содержат ключ 'role', в обычном — нет.
+    """
+    for message in data.get("messages", []):
+        for item in message.get("stage1", []) or []:
+            if isinstance(item, dict) and item.get("role"):
+                return "roleplay"
+    return "ensemble"
+
+
+def list_conversations(mode: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Список всех разговоров (только метаданные).
+
+    Args:
+        mode: Если задан ('ensemble' или 'roleplay'), возвращаются только
+            разговоры этого режима. Для старых разговоров без поля 'mode'
+            режим определяется по содержимому и сохраняется обратно.
 
     Returns:
         Список словарей с метаданными разговоров
@@ -101,11 +122,16 @@ def list_conversations() -> List[Dict[str, Any]]:
             path = os.path.join(DATA_DIR, filename)
             with open(path, 'r') as f:
                 data = json.load(f)
+                # Миграция старых разговоров: определяем и сохраняем режим
+                if "mode" not in data:
+                    data["mode"] = infer_conversation_mode(data)
+                    save_conversation(data)
                 # Возвращаем только метаданные
                 conversations.append({
                     "id": data["id"],
                     "created_at": data["created_at"],
                     "title": data.get("title", "New Conversation"),
+                    "mode": data["mode"],
                     "message_count": len(data["messages"]),
                     "device_id": data.get("device_id"),
                     "device_ip": data.get("device_ip")
@@ -113,6 +139,9 @@ def list_conversations() -> List[Dict[str, Any]]:
 
     # Сортируем по времени создания, новые сверху
     conversations.sort(key=lambda x: x["created_at"], reverse=True)
+
+    if mode:
+        conversations = [c for c in conversations if c["mode"] == mode]
 
     return conversations
 

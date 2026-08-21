@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import Settings from './components/Settings';
@@ -37,12 +38,11 @@ function loadDeviceId() {
   return id;
 }
 
-function App() {
+function CouncilPage({ mode }) {
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState('roleplay');
   const [settings, setSettings] = useState(loadSettings);
   const [envConfig, setEnvConfig] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -68,7 +68,7 @@ function App() {
 
   const loadConversations = async () => {
     try {
-      const convs = await api.listConversations();
+      const convs = await api.listConversations(mode);
       setConversations(convs);
     } catch (error) {
       console.error('Failed to load conversations:', error);
@@ -86,11 +86,15 @@ function App() {
 
   const handleNewConversation = async () => {
     try {
-      const newConv = await api.createConversation({ device_id: deviceId });
+      const newConv = await api.createConversation({
+        device_id: deviceId,
+        mode,
+      });
       setConversations([
         {
           id: newConv.id,
           created_at: newConv.created_at,
+          mode: newConv.mode,
           message_count: 0,
           device_id: deviceId,
         },
@@ -404,8 +408,6 @@ function App() {
         onSendMessage={handleSendMessage}
         isLoading={isLoading}
         mode={mode}
-        onModeChange={setMode}
-        roles={envConfig?.roles}
       />
       {showSettings && (
         <Settings
@@ -432,4 +434,13 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/ensemble" element={<CouncilPage key="ensemble" mode="ensemble" />} />
+      <Route path="/roleplay" element={<CouncilPage key="roleplay" mode="roleplay" />} />
+      {/* Ролевой режим — основной сценарий, открывается по умолчанию */}
+      <Route path="*" element={<Navigate to="/roleplay" replace />} />
+    </Routes>
+  );
+}

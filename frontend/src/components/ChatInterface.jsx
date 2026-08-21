@@ -5,16 +5,6 @@ import Stage2 from './Stage2';
 import Stage3 from './Stage3';
 import '../styles/ChatInterface.css';
 
-const MODES = [
-  { value: 'roleplay', label: 'Ролевой мозговой штурм', description: null },
-  { value: 'ensemble', label: 'Битва моделей', description: 'Один вопрос — разным моделям' },
-];
-
-function roleplayDescription(roles) {
-  if (!roles || roles.length === 0) return 'Роли: см. roles.json';
-  return `Роли: ${roles.join(', ')}`;
-}
-
 const LOADING_TEXTS = {
   stage1: {
     ensemble: 'Этап 1: собираем ответы моделей...',
@@ -101,8 +91,6 @@ export default function ChatInterface({
   onSendMessage,
   isLoading,
   mode,
-  onModeChange,
-  roles,
 }) {
   const [input, setInput] = useState('');
   const [inputHeight, setInputHeight] = useState(72);
@@ -249,20 +237,6 @@ export default function ChatInterface({
         )}
 
         <div ref={messagesEndRef} />
-      </div>
-
-      <div className="mode-selector">
-        {MODES.map((m) => (
-          <button
-            key={m.value}
-            className={`mode-button ${mode === m.value ? 'active' : ''}`}
-            onClick={() => onModeChange(m.value)}
-            disabled={isLoading}
-            title={m.value === 'roleplay' ? roleplayDescription(roles) : m.description}
-          >
-            {m.label}
-          </button>
-        ))}
       </div>
 
       <form className="input-form" onSubmit={handleSubmit}>

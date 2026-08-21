@@ -18,7 +18,7 @@ export const api = {
 
   /**
    * Create a new conversation.
-   * @param {object} device - Optional { device_id, device_name } of the current browser
+   * @param {object} device - Optional { device_id, mode } of the current browser
    */
   async createConversation(device = {}) {
     const response = await fetch(`${API_BASE}/api/conversations`, {
@@ -53,9 +53,11 @@ export const api = {
 
   /**
    * List conversations created from this computer (matched by client IP on the backend).
+   * @param {string} mode - Optional filter: 'ensemble' | 'roleplay'
    */
-  async listConversations() {
-    const response = await fetch(`${API_BASE}/api/conversations`);
+  async listConversations(mode) {
+    const query = mode ? `?mode=${encodeURIComponent(mode)}` : '';
+    const response = await fetch(`${API_BASE}/api/conversations${query}`);
     if (!response.ok) {
       throw new Error('Failed to list conversations');
     }
