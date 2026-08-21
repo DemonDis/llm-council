@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
+import PlannerStub from './components/PlannerStub';
 import Settings from './components/Settings';
 import ConfirmDialog from './components/ConfirmDialog';
 import { api } from './api';
@@ -439,6 +440,8 @@ export default function App() {
     <Routes>
       <Route path="/ensemble" element={<CouncilPage key="ensemble" mode="ensemble" />} />
       <Route path="/roleplay" element={<CouncilPage key="roleplay" mode="roleplay" />} />
+      {/* Заглушка: режим пока не реализован на бэкенде */}
+      <Route path="/planner" element={<PlannerStub />} />
       {/* Ролевой режим — основной сценарий, открывается по умолчанию */}
       <Route path="*" element={<Navigate to="/roleplay" replace />} />
     </Routes>

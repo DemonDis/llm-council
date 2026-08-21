@@ -2,8 +2,24 @@ import { NavLink } from 'react-router-dom';
 import '../styles/Sidebar.css';
 
 const PAGES = [
-  { path: '/roleplay', label: 'Ролевой штурм' },
-  { path: '/ensemble', label: 'Битва моделей' },
+  {
+    path: '/roleplay',
+    label: 'Ролевой штурм',
+    icon: '🎭',
+    title: 'Вопрос цифровым личностям из roles.json',
+  },
+  {
+    path: '/planner',
+    label: 'Планировщик',
+    icon: '📋',
+    title: 'Команда составляет план по вашей задаче (в разработке)',
+  },
+  {
+    path: '/ensemble',
+    label: 'Битва моделей',
+    icon: '⚔️',
+    title: 'Один вопрос — разным моделям совета',
+  },
 ];
 
 // Список уже отфильтрован на бэкенде по IP и режиму страницы —
@@ -25,21 +41,20 @@ export default function Sidebar({
         </button>
       </div>
 
-      <nav className="page-tabs">
+      <nav className="page-nav">
         {PAGES.map((page) => (
           <NavLink
             key={page.path}
             to={page.path}
             className={({ isActive }) =>
-              `page-tab ${isActive ? 'active' : ''}`
+              `page-nav-item ${isActive ? 'active' : ''}`
             }
-            title={
-              page.path === '/roleplay'
-                ? 'Вопрос цифровым личностям из roles.json'
-                : 'Один вопрос — разным моделям совета'
-            }
+            title={page.title}
           >
-            {page.label}
+            <span className="page-nav-icon" aria-hidden="true">
+              {page.icon}
+            </span>
+            <span className="page-nav-label">{page.label}</span>
           </NavLink>
         ))}
       </nav>
