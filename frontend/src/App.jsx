@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
@@ -6,6 +6,7 @@ import PlannerStub from './components/PlannerStub';
 import Settings from './components/Settings';
 import ConfirmDialog from './components/ConfirmDialog';
 import { api } from './api';
+import * as councilStream from './councilStream';
 import './styles/App.css';
 
 const SETTINGS_STORAGE_KEY = 'llm_council_settings';
@@ -39,31 +40,65 @@ function loadDeviceId() {
   return id;
 }
 
-// Иммутабельно обновляет последнее сообщение разговора.
-// Важно: updater-функции в StrictMode вызываются React дважды, поэтому
-// мутировать объекты из prev нельзя — иначе чанки стрима добавляются по два раза.
-function updateLastMessage(prev, transform) {
-  if (!prev?.messages?.length) return prev;
-  const messages = [...prev.messages];
-  const last = messages[messages.length - 1];
-  const clone = {
-    ...last,
-    loading: { ...last.loading },
-    streamingSlots: { ...last.streamingSlots },
-    streamingSlotsStage2: { ...last.streamingSlotsStage2 },
-    streamingStage3: last.streamingStage3 ? { ...last.streamingStage3 } : null,
-  };
-  messages[messages.length - 1] = transform(clone);
-  return { ...prev, messages };
+// Собирает отображаемый разговор: данные бэкенда + оверлей активного стрима.
+// Оверлей живёт в модульном сторе, поэтому переживает смену чата/страницы.
+// Если хвост сохранённых сообщений совпадает с оверлеем (стрим уже сохранён
+// на бэкенде), дубликат убираем — иначе после обновления было бы двоение.
+function buildDisplayConversation(base, overlay) {
+  if (!base) return base;
+  if (!overlay) return base;
+
+  const extra = [];
+  if (overlay.userMessage) extra.push(overlay.userMessage);
+  if (overlay.draftMessage) extra.push(overlay.draftMessage);
+  if (extra.length === 0) return base;
+
+  let messages = base.messages;
+
+  if (overlay.userMessage && messages.length >= 2) {
+    const lastUser = messages[messages.length - 2];
+    const lastMsg = messages[messages.length - 1];
+    if (
+      lastUser?.role === 'user' &&
+      lastUser.content === overlay.userMessage.content &&
+      lastMsg?.role === 'assistant'
+    ) {
+      messages = messages.slice(0, -2);
+    }
+  } else if (!overlay.userMessage && messages.length >= 1) {
+    // Переподключение: черновик заменяет собой заглушку из хранилища
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.role === 'assistant') {
+      messages = messages.slice(0, -1);
+    }
+  }
+
+  return { ...base, messages: [...messages, ...extra] };
 }
 
 function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [streamOverlay, setStreamOverlay] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Актуальный id для колбэков стрима (они живут дольше рендера)
+  const currentIdRef = useRef(null);
+  useEffect(() => {
+    currentIdRef.current = currentConversationId;
+  }, [currentConversationId]);
+
+  // Подписка на состояние стрима выбранного разговора.
+  // Стрим продолжается в сторе даже после ухода со страницы.
+  useEffect(() => {
+    if (!currentConversationId) {
+      setStreamOverlay(null);
+      return;
+    }
+    return councilStream.subscribe(currentConversationId, setStreamOverlay);
+  }, [currentConversationId]);
 
   // Load conversations on mount
   useEffect(() => {
@@ -86,10 +121,36 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
     }
   };
 
+  const finishStream = async (conversationId) => {
+    loadConversations();
+    if (conversationId === currentIdRef.current) {
+      try {
+        const conv = await api.getConversation(conversationId);
+        setCurrentConversation(conv);
+      } catch (error) {
+        console.error('Failed to reload conversation:', error);
+      }
+    }
+    // Оверлей больше не нужен — все данные уже в currentConversation
+    councilStream.clear(conversationId);
+  };
+
   const loadConversation = async (id) => {
     try {
       const conv = await api.getConversation(id);
       setCurrentConversation(conv);
+
+      // Если последнее сообщение ассистента всё ещё генерируется
+      // (например, страница была перезагружена) — переподключаемся к фоновой
+      // задаче и добираем пропущенные события.
+      const messages = conv?.messages || [];
+      const last = messages[messages.length - 1];
+      if (last?.role === 'assistant' && last.status === 'pending') {
+        councilStream.attachToMessage(id, messages.length - 1, last, {
+          onTitleComplete: loadConversations,
+          onFinished: finishStream,
+        }).catch((error) => console.error('Failed to attach to stream:', error));
+      }
     } catch (error) {
       console.error('Failed to load conversation:', error);
     }
@@ -125,6 +186,10 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
     setIsDeleting(true);
     try {
       await api.deleteConversation(id);
+      // Если по разговору шла генерация — убираем её оверлей
+      if (!councilStream.isStreaming(id)) {
+        councilStream.clear(id);
+      }
       setConversations((prev) => prev.filter((c) => c.id !== id));
       if (currentConversationId === id) {
         setCurrentConversationId(null);
@@ -145,251 +210,31 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
     device_id: deviceId,
   };
 
-  const handleSendMessage = async (content) => {
+  const handleSendMessage = (content) => {
     if (!currentConversationId) return;
+    if (councilStream.isStreaming(currentConversationId)) return;
 
-    setIsLoading(true);
     try {
-      // Optimistically add user message to UI
-      const userMessage = { role: 'user', content };
-      setCurrentConversation((prev) => ({
-        ...prev,
-        messages: [...prev.messages, userMessage],
-      }));
-
-      // Create a partial assistant message that will be updated progressively
-      const assistantMessage = {
-        role: 'assistant',
-        stage1: null,
-        stage2: null,
-        stage3: null,
-        metadata: null,
-        streamingSlots: {},
-        streamingSlotsStage2: {},
-        streamingStage3: null,
-        rolesTotal: 0,
-        activeRoleIndex: -1,
-        activeRoleIndexStage2: -1,
-        loading: {
-          stage1: false,
-          stage2: false,
-          stage3: false,
-        },
-      };
-
-      // Add the partial assistant message
-      setCurrentConversation((prev) => ({
-        ...prev,
-        messages: [...prev.messages, assistantMessage],
-      }));
-
-      // Send message with streaming
-      await api.sendMessageStream(
+      councilStream.sendMessage(
         currentConversationId,
         content,
         mode,
         credentials,
-        (eventType, event) => {
-          switch (eventType) {
-            case 'stage1_start':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => ({
-                  ...m,
-                  loading: { ...m.loading, stage1: true },
-                  rolesTotal: event.roles_total || m.rolesTotal,
-                }))
-              );
-              break;
-
-            case 'stage1_complete':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => ({
-                  ...m,
-                  stage1: event.data,
-                  loading: { ...m.loading, stage1: false },
-                  streamingSlots: {},
-                  activeRoleIndex: -1,
-                }))
-              );
-              break;
-
-            case 'stage1_role_start':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => ({
-                  ...m,
-                  streamingSlots: {
-                    ...m.streamingSlots,
-                    [event.index]: { role: event.role, response: '' },
-                  },
-                }))
-              );
-              break;
-
-            case 'stage1_role_active':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => ({
-                  ...m,
-                  activeRoleIndex: event.index,
-                }))
-              );
-              break;
-
-            case 'stage1_chunk':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => {
-                  const slot = m.streamingSlots[event.index];
-                  if (!slot) return m;
-                  return {
-                    ...m,
-                    streamingSlots: {
-                      ...m.streamingSlots,
-                      [event.index]: { ...slot, response: slot.response + event.content },
-                    },
-                  };
-                })
-              );
-              break;
-
-            case 'stage3_role_start':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => ({
-                  ...m,
-                  streamingStage3: { model: event.model, response: '' },
-                }))
-              );
-              break;
-
-            case 'stage3_chunk':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => {
-                  if (!m.streamingStage3) return m;
-                  return {
-                    ...m,
-                    streamingStage3: {
-                      ...m.streamingStage3,
-                      response: m.streamingStage3.response + event.content,
-                    },
-                  };
-                })
-              );
-              break;
-
-            case 'stage2_start':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => ({
-                  ...m,
-                  loading: { ...m.loading, stage2: true },
-                }))
-              );
-              break;
-
-            case 'stage2_role_start':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => ({
-                  ...m,
-                  streamingSlotsStage2: {
-                    ...m.streamingSlotsStage2,
-                    [event.index]: { role: event.role, ranking: '' },
-                  },
-                }))
-              );
-              break;
-
-            case 'stage2_role_active':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => ({
-                  ...m,
-                  activeRoleIndexStage2: event.index,
-                }))
-              );
-              break;
-
-            case 'stage2_chunk':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => {
-                  const slot = m.streamingSlotsStage2[event.index];
-                  if (!slot) return m;
-                  return {
-                    ...m,
-                    streamingSlotsStage2: {
-                      ...m.streamingSlotsStage2,
-                      [event.index]: { ...slot, ranking: slot.ranking + event.content },
-                    },
-                  };
-                })
-              );
-              break;
-
-            case 'stage2_complete':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => ({
-                  ...m,
-                  stage2: event.data,
-                  metadata: event.metadata,
-                  loading: { ...m.loading, stage2: false },
-                  streamingSlotsStage2: {},
-                  activeRoleIndexStage2: -1,
-                }))
-              );
-              break;
-
-            case 'stage3_start':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => ({
-                  ...m,
-                  loading: { ...m.loading, stage3: true },
-                }))
-              );
-              break;
-
-            case 'stage3_complete':
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => ({
-                  ...m,
-                  stage3: event.data,
-                  loading: { ...m.loading, stage3: false },
-                  streamingStage3: null,
-                }))
-              );
-              break;
-
-            case 'title_complete':
-              // Reload conversations to get updated title
-              loadConversations();
-              break;
-
-            case 'complete':
-              // Stream complete, reload conversations list
-              loadConversations();
-              setIsLoading(false);
-              break;
-
-            case 'error':
-              console.error('Stream error:', event.message);
-              setCurrentConversation((prev) =>
-                updateLastMessage(prev, (m) => ({
-                  ...m,
-                  loading: { stage1: false, stage2: false, stage3: false },
-                }))
-              );
-              setIsLoading(false);
-              break;
-
-            default:
-              console.log('Unknown event type:', eventType);
-          }
+        {
+          onTitleComplete: loadConversations,
+          onFinished: finishStream,
         }
       );
     } catch (error) {
       console.error('Failed to send message:', error);
-      // Remove optimistic messages on error
-      setCurrentConversation((prev) => ({
-        ...prev,
-        messages: prev.messages.slice(0, -2),
-      }));
-      setIsLoading(false);
     }
   };
+
+  const isStreamingCurrent = streamOverlay?.status === 'streaming';
+  const displayConversation = useMemo(
+    () => buildDisplayConversation(currentConversation, streamOverlay),
+    [currentConversation, streamOverlay]
+  );
 
   return (
     <div className="app">
@@ -402,9 +247,9 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
         onOpenSettings={onOpenSettings}
       />
       <ChatInterface
-        conversation={currentConversation}
+        conversation={displayConversation}
         onSendMessage={handleSendMessage}
-        isLoading={isLoading}
+        isLoading={isStreamingCurrent}
         mode={mode}
       />
       {deleteTarget && (

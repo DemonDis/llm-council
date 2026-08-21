@@ -4,6 +4,44 @@
 
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
+/**
+ * Читает SSE-поток и вызывает onEvent(type, event) для каждого события.
+ * События разделяются пустой строкой (\n\n). Накапливаем данные в буфере,
+ * чтобы большие события (stage1_complete и т.п.), разрезанные на чанки,
+ * парсились целиком; декодируем с stream:true, чтобы не резать
+ * многобайтовые символы.
+ */
+async function readSSE(response, onEvent) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    let separator;
+    while ((separator = buffer.indexOf('\n\n')) !== -1) {
+      const rawEvent = buffer.slice(0, separator).trim();
+      buffer = buffer.slice(separator + 2);
+
+      for (const line of rawEvent.split('\n')) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          try {
+            const event = JSON.parse(data);
+            onEvent(event.type, event);
+          } catch (e) {
+            console.error('Failed to parse SSE event:', e);
+          }
+        }
+      }
+    }
+  }
+}
+
 export const api = {
   /**
    * Get backend config status (whether API key/URL are set in .env).
@@ -103,6 +141,10 @@ export const api = {
 
   /**
    * Send a message and receive streaming updates.
+   *
+   * На бэкенде генерация идёт фоновой задачей: разрыв соединения её не
+   * останавливает. Вернуться к событиям можно через getMessageEvents().
+   *
    * @param {string} conversationId - The conversation ID
    * @param {string} content - The message content
    * @param {string} mode - The council mode ('ensemble' or 'roleplay')
@@ -126,36 +168,27 @@ export const api = {
       throw new Error('Failed to send message');
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+    await readSSE(response, onEvent);
+  },
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      // Декодируем с stream:true, чтобы не разрезать многобайтовые символы
-      buffer += decoder.decode(value, { stream: true });
-
-      // События разделяются пустой строкой (\n\n). Накапливаем данные,
-      // чтобы большие события (stage1_complete и т.п.), разрезанные на чанки, парсились целиком
-      let separator;
-      while ((separator = buffer.indexOf('\n\n')) !== -1) {
-        const rawEvent = buffer.slice(0, separator).trim();
-        buffer = buffer.slice(separator + 2);
-
-        for (const line of rawEvent.split('\n')) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            try {
-              const event = JSON.parse(data);
-              onEvent(event.type, event);
-            } catch (e) {
-              console.error('Failed to parse SSE event:', e);
-            }
-          }
-        }
-      }
+  /**
+   * Подключиться к событиям уже запущенной/завершённой генерации сообщения.
+   *
+   * Используется для восстановления после переключения чата, страницы или
+   * перезагрузки: бэкенд отдаёт пропущенные события из буфера фоновой задачи
+   * либо мгновенно воспроизводит сохранённое состояние сообщения.
+   *
+   * @param {string} conversationId
+   * @param {number} messageIndex - индекс сообщения ассистента в разговоре
+   * @param {function} onEvent - (eventType, data) => void
+   */
+  async getMessageEvents(conversationId, messageIndex, onEvent) {
+    const response = await fetch(
+      `${API_BASE}/api/conversations/${conversationId}/messages/${messageIndex}/events`
+    );
+    if (!response.ok) {
+      throw new Error('Failed to attach to message events');
     }
+    await readSSE(response, onEvent);
   },
 };
