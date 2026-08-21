@@ -37,7 +37,7 @@ TITLE_MODEL = os.getenv("TITLE_MODEL") or CHAIRMAN_MODEL or "gemini-3-pro"
 # Каталог для хранения разговоров
 DATA_DIR = os.getenv("DATA_DIR", "data/conversations")
 
-# Роли по умолчанию (используются, если backend/roles.json не создан или пуст)
+# Роли по умолчанию (используются, если roles.json в person/role не создан или пуст)
 DEFAULT_COUNCIL_ROLES = {
     "Скептик": """Ты — Скептик. Твоя цель: Найти точки отказа и предотвратить проблемы.
 Ищи скрытые риски, слабые места, уязвимости и неучтенные факторы. 
@@ -68,9 +68,12 @@ def load_council_roles() -> dict:
     Формат файла: {"Имя роли": "системный промпт (как эта роль думает и говорит)", ...}
     Ключи, начинающиеся с "_" (например, "_comment"), игнорируются и служат для заметок.
 
-    Путь к файлу: backend/roles.json (переопределяется через COUNCIL_ROLES_FILE).
+    Путь к файлу: backend/person/role/roles.json (переопределяется через COUNCIL_ROLES_FILE).
     """
-    roles_file = os.getenv("COUNCIL_ROLES_FILE", str(Path(__file__).parent.parent / "roles.json"))
+    roles_file = os.getenv(
+        "COUNCIL_ROLES_FILE",
+        str(Path(__file__).parent.parent / "person" / "role" / "roles.json"),
+    )
     path = Path(roles_file)
 
     if path.exists():
@@ -87,5 +90,5 @@ def load_council_roles() -> dict:
     return DEFAULT_COUNCIL_ROLES
 
 
-# Роли для режима «Ролевой мозговой штурм» (загружаются из backend/roles.json)
+# Роли для режима «Ролевой мозговой штурм» (загружаются из backend/person/role/roles.json)
 COUNCIL_ROLES = load_council_roles()
