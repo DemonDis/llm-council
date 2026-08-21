@@ -1,5 +1,4 @@
 """Клиент API OpenRouter для запросов к LLM."""
-
 import ssl
 import json
 import httpx
@@ -12,9 +11,8 @@ _SSL_CTX.set_ciphers("DEFAULT:@SECLEVEL=2")
 _SSL_CTX.check_hostname = False
 _SSL_CTX.verify_mode = ssl.CERT_NONE
 
-# Стандартный URL OpenRouter, используется, если не задан в .env и не передан с фронтенда
-DEFAULT_OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-
+# Стандартный URL, используется, если не задан в .env и не передан с фронтенда
+DEFAULT_OPENROUTER_URL = ""
 
 async def query_model(
     model: str,
@@ -56,7 +54,6 @@ async def query_model(
     # Это грубая оценка, но даёт представление о масштабе
     approx_tokens = num_chars / 4
     print(f"DEBUG: Querying model '{model}'. Payload size: ~{num_chars} chars, ~{int(approx_tokens)} tokens.")
-
 
     try:
         # Создаём транспорт с кастомным SSL-контекстом (как в rick/backend/src/app.py)
@@ -139,7 +136,6 @@ async def query_model_stream(
     except Exception as e:
         print(f"Error streaming from model {model}: {e}")
         yield None
-
 
 async def query_models_parallel(
     models: List[str],

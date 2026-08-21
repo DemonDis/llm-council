@@ -60,7 +60,6 @@ DEFAULT_COUNCIL_ROLES = {
 Задай вопросы: На чем основано это утверждение? Какие данные это подтверждают? Что мы принимаем на веру?"""
 }
 
-
 def load_council_roles() -> dict:
     """
     Загружает роли для режима «Ролевой мозговой штурм» из JSON-файла.
@@ -88,7 +87,6 @@ def load_council_roles() -> dict:
             print(f"Ошибка загрузки ролей из {path}: {e}")
 
     return DEFAULT_COUNCIL_ROLES
-
 
 # Роли для режима «Ролевой мозговой штурм» (загружаются из backend/person/role/roles.json)
 COUNCIL_ROLES = load_council_roles()

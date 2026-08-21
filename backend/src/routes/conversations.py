@@ -1,17 +1,13 @@
 """Роутер: конфигурация API и CRUD разговоров."""
-
 import uuid
 from typing import List, Optional
-
 from fastapi import APIRouter, HTTPException, Request
-
 import storage
 from config import OPENROUTER_API_KEY, OPENROUTER_API_URL, COUNCIL_ROLES
 from schemas import CreateConversationRequest, Conversation, ConversationMetadata
 from utils import get_client_ip
 
 router = APIRouter()
-
 
 @router.get("/api/config")
 async def get_config():
@@ -22,7 +18,6 @@ async def get_config():
         "api_url": OPENROUTER_API_URL or "",
         "roles": list(COUNCIL_ROLES.keys()),
     }
-
 
 @router.get("/api/conversations", response_model=List[ConversationMetadata])
 async def list_conversations(request: Request, mode: Optional[str] = None):
@@ -39,7 +34,6 @@ async def list_conversations(request: Request, mode: Optional[str] = None):
         if c.get("device_ip") == client_ip
     ]
 
-
 @router.post("/api/conversations", response_model=Conversation)
 async def create_conversation(request: CreateConversationRequest, http_request: Request):
     """Создание нового разговора."""
@@ -51,7 +45,6 @@ async def create_conversation(request: CreateConversationRequest, http_request: 
         mode=request.mode
     )
     return conversation
-
 
 @router.delete("/api/conversations/{conversation_id}")
 async def delete_conversation(conversation_id: str, http_request: Request):
@@ -72,7 +65,6 @@ async def delete_conversation(conversation_id: str, http_request: Request):
 
     storage.delete_conversation(conversation_id)
     return {"status": "deleted", "id": conversation_id}
-
 
 @router.get("/api/conversations/{conversation_id}", response_model=Conversation)
 async def get_conversation(conversation_id: str):

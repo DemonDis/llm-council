@@ -1,10 +1,7 @@
 """Вспомогательные функции бэкенда."""
-
 import socket
 from typing import Optional
-
 from fastapi import Request
-
 
 def _get_lan_ip() -> str:
     """Определяет локальный сетевой IP машины (например, 192.168.x.x)."""
@@ -17,7 +14,6 @@ def _get_lan_ip() -> str:
         return "127.0.0.1"
     finally:
         s.close()
-
 
 def get_client_ip(http_request: Request) -> Optional[str]:
     """IP клиента; для localhost возвращается реальный сетевой IP машины."""

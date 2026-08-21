@@ -16,7 +16,6 @@ UNSET = object()
 _locks_guard = threading.Lock()
 _conversation_locks: Dict[str, threading.RLock] = {}
 
-
 def _get_lock(conversation_id: str) -> threading.RLock:
     """Возвращает блокировку для конкретного разговора (создаёт при необходимости)."""
     with _locks_guard:
@@ -71,7 +70,6 @@ def create_conversation(
 
     return conversation
 
-
 def get_conversation(conversation_id: str) -> Optional[Dict[str, Any]]:
     """
     Загрузка разговора из хранилища.
@@ -89,7 +87,6 @@ def get_conversation(conversation_id: str) -> Optional[Dict[str, Any]]:
 
     with open(path, 'r') as f:
         return json.load(f)
-
 
 def save_conversation(conversation: Dict[str, Any]):
     """
@@ -113,7 +110,6 @@ def save_conversation(conversation: Dict[str, Any]):
             pass
         raise
 
-
 def infer_conversation_mode(data: Dict[str, Any]) -> str:
     """
     Определяет режим разговора для старых файлов без поля 'mode'.
@@ -125,7 +121,6 @@ def infer_conversation_mode(data: Dict[str, Any]) -> str:
             if isinstance(item, dict) and item.get("role"):
                 return "roleplay"
     return "ensemble"
-
 
 def list_conversations(mode: Optional[str] = None) -> List[Dict[str, Any]]:
     """
@@ -171,7 +166,6 @@ def list_conversations(mode: Optional[str] = None) -> List[Dict[str, Any]]:
 
     return conversations
 
-
 def delete_conversation(conversation_id: str) -> bool:
     """
     Удаление разговора из хранилища.
@@ -189,7 +183,6 @@ def delete_conversation(conversation_id: str) -> bool:
 
     os.remove(path)
     return True
-
 
 def set_device_info(
     conversation_id: str,
@@ -222,7 +215,6 @@ def set_device_info(
         if changed:
             save_conversation(conversation)
 
-
 def add_user_message(conversation_id: str, content: str):
     """
     Добавление сообщения пользователя в разговор.
@@ -242,7 +234,6 @@ def add_user_message(conversation_id: str, content: str):
         })
 
         save_conversation(conversation)
-
 
 def add_pending_assistant_message(conversation_id: str) -> int:
     """
@@ -279,7 +270,6 @@ def add_pending_assistant_message(conversation_id: str) -> int:
 # Поля, разрешённые для частичного обновления сообщения ассистента
 _UPDATABLE_FIELDS = ("status", "stage1", "stage2", "stage3", "metadata")
 
-
 def update_assistant_message(conversation_id: str, index: int, fields: Dict[str, Any]):
     """
     Частичное обновление сообщения ассистента (поэтапное сохранение результата).
@@ -310,7 +300,6 @@ def update_assistant_message(conversation_id: str, index: int, fields: Dict[str,
                 message[key] = value
 
         save_conversation(conversation)
-
 
 def add_assistant_message(
     conversation_id: str,
@@ -344,7 +333,6 @@ def add_assistant_message(
         })
 
         save_conversation(conversation)
-
 
 def update_conversation_title(conversation_id: str, title: str):
     """

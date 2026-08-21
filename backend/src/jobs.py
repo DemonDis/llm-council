@@ -12,7 +12,6 @@ import asyncio
 import json
 import logging
 import time
-
 import storage
 from council import (
     generate_conversation_title,
@@ -35,11 +34,9 @@ JOB_TTL_SECONDS = 3600
 # Внутренний маркер конца потока для очередей подписчиков (не попадает в буфер)
 _SENTINEL = object()
 
-
 def json_event(event: dict) -> str:
     """Сериализует событие в SSE-строку."""
     return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-
 
 class Job:
     """Фоновая задача генерации одного сообщения совета."""
@@ -67,13 +64,10 @@ class Job:
             "status": self.status,
         }
 
-
 _jobs = {}
-
 
 def _job_key(conversation_id: str, message_index: int) -> str:
     return f"{conversation_id}:{message_index}"
-
 
 def _prune_expired():
     """Удаляет давно завершённые задачи из памяти."""
@@ -86,10 +80,8 @@ def _prune_expired():
     for key in expired:
         del _jobs[key]
 
-
 def get_job(conversation_id: str, message_index: int) -> Job | None:
     return _jobs.get(_job_key(conversation_id, message_index))
-
 
 async def subscribe(job: Job):
     """
@@ -361,7 +353,6 @@ async def stream_job_events(job: Job):
                 return
     finally:
         await unsubscribe(job, queue)
-
 
 def synthesize_events_from_message(message: dict, fallback_mode: str = "ensemble"):
     """

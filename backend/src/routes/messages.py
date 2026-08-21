@@ -3,12 +3,9 @@
 Генерация выполняется фоновой задачей (jobs.py), а не внутри HTTP-соединения:
 отключение клиента не останавливает процесс, результат сохраняется поэтапно.
 """
-
 import asyncio
-
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
-
 import storage
 import jobs
 from council import (
@@ -20,7 +17,6 @@ from schemas import SendMessageRequest
 from utils import get_client_ip
 
 router = APIRouter()
-
 
 @router.post("/api/conversations/{conversation_id}/message")
 async def send_message(conversation_id: str, request: SendMessageRequest, http_request: Request):
@@ -74,7 +70,6 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
         "metadata": metadata
     }
 
-
 @router.post("/api/conversations/{conversation_id}/message/stream")
 async def send_message_stream(conversation_id: str, request: SendMessageRequest, http_request: Request):
     """
@@ -117,7 +112,6 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
 
     return _sse_response(jobs.stream_job_events(job))
 
-
 @router.get("/api/conversations/{conversation_id}/messages/{message_index}/events")
 async def message_events(conversation_id: str, message_index: int):
     """
@@ -149,7 +143,6 @@ async def message_events(conversation_id: str, message_index: int):
             yield jobs.json_event(event)
 
     return _sse_response(replay())
-
 
 def _sse_response(generator):
     return StreamingResponse(
