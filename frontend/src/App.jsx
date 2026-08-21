@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import Settings from './components/Settings';
+import ConfirmDialog from './components/ConfirmDialog';
 import { api } from './api';
 import './App.css';
 
@@ -46,6 +47,8 @@ function App() {
   const [envConfig, setEnvConfig] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [deviceId] = useState(loadDeviceId);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load conversations and backend config on mount
   useEffect(() => {
@@ -104,7 +107,7 @@ function App() {
   };
 
   const handleDeleteConversation = async (id) => {
-    if (!window.confirm('Удалить этот разговор?')) return;
+    setIsDeleting(true);
     try {
       await api.deleteConversation(id);
       setConversations((prev) => prev.filter((c) => c.id !== id));
@@ -112,8 +115,11 @@ function App() {
         setCurrentConversationId(null);
         setCurrentConversation(null);
       }
+      setDeleteTarget(null);
     } catch (error) {
       console.error('Failed to delete conversation:', error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -390,7 +396,7 @@ function App() {
         currentConversationId={currentConversationId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
-        onDeleteConversation={handleDeleteConversation}
+        onDeleteConversation={setDeleteTarget}
         onOpenSettings={() => setShowSettings(true)}
       />
       <ChatInterface
@@ -408,6 +414,18 @@ function App() {
           onSave={handleSaveSettings}
           onClear={handleClearSettings}
           onClose={() => setShowSettings(false)}
+        />
+      )}
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Удалить этот разговор?"
+          message={`«${
+            conversations.find((c) => c.id === deleteTarget)?.title ||
+            'Новый разговор'
+          }» будет удалён безвозвратно.`}
+          busy={isDeleting}
+          onConfirm={() => handleDeleteConversation(deleteTarget)}
+          onCancel={() => setDeleteTarget(null)}
         />
       )}
     </div>
