@@ -1,12 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import Sidebar from './components/Sidebar';
-import ChatInterface from './components/ChatInterface';
-import PlannerStub from './components/PlannerStub';
-import Settings from './components/Settings';
-import ConfirmDialog from './components/ConfirmDialog';
-import { api } from './api';
-import * as councilStream from './councilStream';
+import { Sidebar, ChatInterface, PlannerStub, Settings, ConfirmDialog } from './components';
+import { api, councilStream } from './utils';
 import './styles/App.css';
 
 const SETTINGS_STORAGE_KEY = 'llm_council_settings';

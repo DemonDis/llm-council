@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import Stage1 from './Stage1';
-import Stage2 from './Stage2';
-import Stage3 from './Stage3';
+import { Stage1, Stage2, Stage3 } from './index';
 import '../styles/ChatInterface.css';
 
 const LOADING_TEXTS = {

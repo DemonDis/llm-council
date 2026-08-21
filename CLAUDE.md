@@ -98,7 +98,7 @@ LLM Council — это трёхэтапная система обсуждени�
 - Передаёт в запросы: `api_key`/`api_url` (приоритет над .env) и `device_id`
 - Удаляет разговоры через `handleDeleteConversation` (с подтверждением)
 
-**`councilStream.js`** — модульный стор потоковой генерации (вне React)
+**`utils/councilStream.js`** — модульный стор потоковой генерации (вне React)
 - Стримы keyed by conversationId живут на уровне модуля: переход в другой чат/на другую страницу не прерывает загрузку; вернувшись, подписчик видит актуальный прогресс
 - Снапшот: `{status: 'streaming'|'complete'|'error', userMessage, draftMessage}`; `draftMessage` — та же форма сообщения ассистента, что рендерит ChatInterface (streamingSlots, loading и т.д.)
 - `applyEvent()` — вся обработка событий этапов (бывший switch из App.jsx); события маппятся в черновик иммутабельно (новая ссылка на каждое событие)
@@ -184,7 +184,7 @@ LLM Council — это трёхэтапная система обсуждени�
 ### Конфигурация портов
 - Бэкенд: 8001 (изменён с 8000 для избежания конфликта)
 - Фронтенд: 5173 (по умолчанию Vite)
-- При изменении обновляйте и `backend/main.py`, и `frontend/src/api.js`
+- При изменении обновляйте и `backend/main.py`, и `frontend/src/utils/api.js`
 
 ### Рендеринг Markdown
 Все компоненты ReactMarkdown должны быть обёрнуты в `<div className="markdown-content">` для корректных отступов. Этот класс определён глобально в `index.css`.
