@@ -11,9 +11,9 @@ const DEVICE_ID_STORAGE_KEY = 'llm_council_device_id';
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { apiKey: '', apiUrl: '' };
+    return raw ? JSON.parse(raw) : { apiKey: '' };
   } catch (e) {
-    return { apiKey: '', apiUrl: '' };
+    return { apiKey: '' };
   }
 }
 
@@ -123,7 +123,7 @@ function App() {
   };
 
   const handleClearSettings = () => {
-    setSettings({ apiKey: '', apiUrl: '' });
+    setSettings({ apiKey: '' });
     localStorage.removeItem(SETTINGS_STORAGE_KEY);
   };
 
@@ -131,7 +131,6 @@ function App() {
   // Если локальное значение пустое — параметр не отправляется, бэкенд использует .env.
   const credentials = {
     ...(settings.apiKey ? { api_key: settings.apiKey } : {}),
-    ...(settings.apiUrl ? { api_url: settings.apiUrl } : {}),
     device_id: deviceId,
   };
 

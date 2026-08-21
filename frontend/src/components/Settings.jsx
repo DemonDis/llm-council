@@ -3,15 +3,12 @@ import './Settings.css';
 
 export default function Settings({ envConfig, settings, onSave, onClear, onClose }) {
   const [apiKey, setApiKey] = useState(settings.apiKey || '');
-  const [apiUrl, setApiUrl] = useState(settings.apiUrl || '');
   const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(null);
 
   const keyConfigured = Boolean(envConfig?.api_key_configured);
-  const urlConfigured = Boolean(envConfig?.api_url_configured);
-  const envUrl = envConfig?.api_url || '';
 
-  const hasLocal = Boolean(settings.apiKey || settings.apiUrl);
+  const hasLocal = Boolean(settings.apiKey);
 
   const copy = async (text, label) => {
     if (!text) return;
@@ -25,7 +22,7 @@ export default function Settings({ envConfig, settings, onSave, onClear, onClose
   };
 
   const handleSave = () => {
-    onSave({ apiKey: apiKey.trim(), apiUrl: apiUrl.trim() });
+    onSave({ apiKey: apiKey.trim() });
     onClose();
   };
 
@@ -75,33 +72,6 @@ export default function Settings({ envConfig, settings, onSave, onClear, onClose
           {keyConfigured && (
             <div className="settings-hint">
               Ключ задан в .env. Если поле пустое — используется он. Введите свой ключ, чтобы
-              переопределить его.
-            </div>
-          )}
-        </div>
-
-        <div className="settings-section">
-          <label>URL API (OPENROUTER_API_URL)</label>
-          <div className="settings-field">
-            <input
-              type="text"
-              value={apiUrl}
-              onChange={(e) => setApiUrl(e.target.value)}
-              placeholder="https://openrouter.ai/api/v1/chat/completions"
-              spellCheck="false"
-            />
-            <button
-              className="settings-btn"
-              onClick={() => copy(apiUrl || envUrl, 'url')}
-              disabled={!apiUrl && !envUrl}
-              title="Копировать URL"
-            >
-              {copied === 'url' ? 'Готово' : 'Копировать'}
-            </button>
-          </div>
-          {urlConfigured && (
-            <div className="settings-hint">
-              URL задан в .env. Если поле пустое — используется он. Введите свой URL, чтобы
               переопределить его.
             </div>
           )}
