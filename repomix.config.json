@@ -26,13 +26,26 @@
     "useGitignore": true,
     "useDefaultPatterns": true,
     "customPatterns": [
-      "frontend/",
-      "img/",
-      "build/",
-      "backend/__pycache__/*",
-      "README.md",
+      "node_modules/",
+      "dist/",
+      "package-lock.json",
+      "__pycache__/",
+      ".venv/",
+      "env/",
+      ".env/",
+      ".python-version",
+      "requirements.txt",
+      "packages/",
+      ".vscode/",
+      ".svn/",
+      ".git/",
+      "*.lock",
+      ".DS_Store",
+      "frontend/public/",
+      "frontend/src/assets/",
       "CLAUDE.md",
-      "uv.lock"
+      "README.md",
+      "README1.md"
     ]
   },
   "security": {

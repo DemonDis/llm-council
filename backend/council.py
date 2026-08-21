@@ -2,15 +2,15 @@
 
 from typing import List, Dict, Any, Tuple
 import asyncio
-from .openrouter import query_models_parallel, query_model
-from .config import COUNCIL_MODELS, CHAIRMAN_MODEL, ROLEPLAY_MODEL, TITLE_MODEL, COUNCIL_ROLES
+from openrouter import query_models_parallel, query_model, query_model_stream
+from config import COUNCIL_MODELS, CHAIRMAN_MODEL, ROLEPLAY_MODEL, TITLE_MODEL, COUNCIL_ROLES
 
 # Режимы работы совета
 MODE_ENSEMBLE = "ensemble"    # Битва моделей: один вопрос разным моделям
 MODE_ROLEPLAY = "roleplay"    # Ролевой мозговой штурм: роли в одной модели
 
 # Роли для режима "Ролевой мозговой штурм"
-# Загружаются из roles.json в корне проекта (см. load_council_roles в config.py).
+# Загружаются из backend/roles.json (см. load_council_roles в config.py).
 # Формат: {"Имя роли": "системный промпт", ...} — можно добавлять/менять роли без правки кода.
 
 def get_display_name(result: Dict[str, Any]) -> str:
@@ -47,7 +47,7 @@ async def stage1_collect_ensemble(
     messages = [{"role": "user", "content": user_query}]
 
     # Параллельный запрос ко всем моделям
-    responses = await query_models_parallel(COUNCIL_MODELS, messages, api_key=api_key, api_url=api_url)
+    responses = await query_models_parallel(COUNCIL_MODELS, messages, timeout=240.0, api_key=api_key, api_url=api_url)
 
     # Формируем результаты
     stage1_results = []
@@ -79,18 +79,26 @@ async def stage1_collect_roleplay(
     Returns:
         Список словарей с ключами 'model', 'role' и 'response'
     """
-    # Создаём задачи: для каждой роли свой системный промпт
-    tasks = [
-        query_model(ROLEPLAY_MODEL, [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_query}
-        ], api_key=api_key, api_url=api_url)
-        for system_prompt in COUNCIL_ROLES.values()
-    ]
+    # Создаём задачи: для каждой роли объединяем системный промпт и запрос пользователя
+    # Некоторые модели не поддерживают role="system", поэтому надежнее передавать всё как role="user"
+    tasks = []
+    for system_prompt in COUNCIL_ROLES.values():
+        tasks.append(
+            query_model(ROLEPLAY_MODEL, [
+                {"role": "user", "content": f"""System Instruction: {system_prompt}
 
+User Query: {user_query}"""}
+            ], api_key=api_key, api_url=api_url)
+        )
+        await asyncio.sleep(2.0) # Пауза чтобы модель успевала
+    
     # Параллельное ожидание ответов всех ролей
-    responses = await asyncio.gather(*tasks)
-
+    responses = []
+    for task in tasks:
+        response = await task
+        responses.append(response)
+        await asyncio.sleep(2.0) # Пауза между получением ответов
+    
     # Формируем результаты с привязкой к ролям
     stage1_results = []
     for role_name, response in zip(COUNCIL_ROLES.keys(), responses):
@@ -102,6 +110,78 @@ async def stage1_collect_roleplay(
             })
 
     return stage1_results
+
+
+async def stage1_collect_roleplay_stream(
+    user_query: str,
+    api_key: str = None,
+    api_url: str = None
+):
+    """
+    Этап 1 (режим «Ролевой мозговой штурм») с потоковой передачей ответов.
+
+    Каждая роль получает свой системный промпт и общий вопрос пользователя.
+    Ответы передаются по мере поступления токенов.
+
+    Yields:
+        Словари с ключами:
+        - {'type': 'start', 'index': int, 'role': str}: начало ответа роли
+        - {'type': 'chunk', 'index': int, 'content': str}: часть текста
+        - {'type': 'done', 'index': int, 'role': str, 'model': str, 'response': str}: ответ завершён
+    """
+    accumulated = ["" for _ in COUNCIL_ROLES]
+    roles = list(COUNCIL_ROLES.items())
+
+    async def _stream_role(index, role_name, system_prompt):
+        # Задержка перед запросом к API для rate-limiting (все роли обращаются к одной модели)
+        await asyncio.sleep(index * 2.0)
+
+        gen = query_model_stream(ROLEPLAY_MODEL, [
+            {"role": "user", "content": f"""System Instruction: {system_prompt}
+
+User Query: {user_query}"""}
+        ], api_key=api_key, api_url=api_url)
+
+        first = True
+        async for chunk in gen:
+            if chunk is None:
+                break
+            content = chunk.get("content", "")
+            accumulated[index] += content
+            if first:
+                yield {"type": "active", "index": index, "role": role_name}
+                first = False
+            yield {"type": "chunk", "index": index, "content": content}
+
+    # Создаём все потоки сразу
+    pending = [_stream_role(i, name, prompt) for i, (name, prompt) in enumerate(roles)]
+
+    # Уведомляем о начале всех ролей (прогресс-бар знает общее число)
+    for index, (role_name, _) in enumerate(roles):
+        yield {"type": "start", "index": index, "role": role_name}
+
+    # Собираем чанки по мере поступления (API-запросы идут с задержкой)
+    active = list(range(len(pending)))
+    while active:
+        new_active = []
+        for index in active:
+            try:
+                event = await pending[index].__anext__()
+                yield event
+                new_active.append(index)
+            except StopAsyncIteration:
+                role_name = roles[index][0]
+                yield {
+                    "type": "done",
+                    "index": index,
+                    "role": role_name,
+                    "model": ROLEPLAY_MODEL,
+                    "response": accumulated[index],
+                }
+        active = new_active
+
+        if active:
+            await asyncio.sleep(0.1)
 
 
 async def stage1_collect_responses(
@@ -198,14 +278,23 @@ FINAL RANKING:
 
     if mode == MODE_ROLEPLAY:
         # Каждая роль со своим системным промптом оценивает ответы остальных
-        tasks = [
-            query_model(ROLEPLAY_MODEL, [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": ranking_prompt}
-            ], api_key=api_key, api_url=api_url)
-            for system_prompt in COUNCIL_ROLES.values()
-        ]
-        responses = await asyncio.gather(*tasks)
+        # Объединяем системный промпт с пользовательским в одно сообщение, так как некоторые модели не поддерживают role="system"
+        tasks = []
+        for system_prompt in COUNCIL_ROLES.values():
+            tasks.append(
+                query_model(ROLEPLAY_MODEL, [
+                    {"role": "user", "content": f"""System Instruction: {system_prompt}
+
+User Query: {ranking_prompt}"""}
+                ], timeout=240.0, api_key=api_key, api_url=api_url)
+            )
+            await asyncio.sleep(2.0) # Пауза чтобы модель успевала
+            
+        responses = []
+        for task in tasks:
+            response = await task
+            responses.append(response)
+            await asyncio.sleep(2.0) # Пауза между получением ответов
 
         # Формируем результаты с привязкой к ролям
         stage2_results = []
@@ -226,7 +315,7 @@ FINAL RANKING:
     messages = [{"role": "user", "content": ranking_prompt}]
 
     # Получаем рейтинги от всех моделей совета параллельно
-    responses = await query_models_parallel(COUNCIL_MODELS, messages, api_key=api_key, api_url=api_url)
+    responses = await query_models_parallel(COUNCIL_MODELS, messages, timeout=240.0, api_key=api_key, api_url=api_url)
 
     # Формируем результаты
     stage2_results = []
@@ -241,6 +330,124 @@ FINAL RANKING:
             })
 
     return stage2_results, label_to_model
+
+
+def _build_ranking_prompt(user_query: str, stage1_results: List[Dict[str, Any]]) -> str:
+    """Формирует промпт для ранжирования (общий для streaming и обычного режима)."""
+    labels = [chr(65 + i) for i in range(len(stage1_results))]
+    responses_text = "\n\n".join([
+        f"Response {label}:\n{result['response']}"
+        for label, result in zip(labels, stage1_results)
+    ])
+    return f"""Вы оцениваете различные ответы на следующий вопрос:
+
+Вопрос: {user_query}
+
+Вот ответы от разных участников (анонимизированы):
+
+{responses_text}
+
+Ваша задача:
+1. Сначала оцените каждый ответ по отдельности. Для каждого ответа объясните, что в нём хорошо, а что плохо.
+2. Затем, в самом конце вашего ответа, предоставьте итоговый рейтинг.
+
+ВАЖНО: Ваш итоговый рейтинг ДОЛЖЕН быть отформатирован ТОЧНО следующим образом:
+- Начните со строки "FINAL RANKING:" (заглавными буквами, с двоеточием)
+- Затем перечислите ответы от лучшего к худшему в виде нумерованного списка
+- Каждая строка должна быть: номер, точка, пробел, затем ТОЛЬКО метка ответа (например, "1. Response A")
+- Не добавляйте никакого другого текста или пояснений в раздел рейтинга
+
+Пример правильного формата для ВСЕГО вашего ответа:
+
+Response A предоставляет хорошие детали по X, но упускает Y...
+Response B точен, но не хватает глубины по Z...
+Response C даёт самый полный ответ...
+
+FINAL RANKING:
+1. Response C
+2. Response A
+3. Response B
+
+Теперь предоставьте вашу оценку и рейтинг:"""
+
+
+async def stage2_collect_rankings_stream(
+    user_query: str,
+    stage1_results: List[Dict[str, Any]],
+    api_key: str = None,
+    api_url: str = None
+):
+    """
+    Этап 2 (режим «Ролевой мозговой штурм») с потоковой передачей оценок.
+
+    Каждая роль (со своим системным промптом) оценивает анонимизированные ответы.
+    Оценки передаются по мере поступления токенов.
+
+    Yields:
+        Словари с ключами:
+        - {'type': 'start', 'index': int, 'role': str}: начало оценки роли
+        - {'type': 'active', 'index': int, 'role': str}: роль начала генерировать токены
+        - {'type': 'chunk', 'index': int, 'content': str}: часть текста оценки
+        - {'type': 'done', 'index': int, 'role': str, 'model': str, 'ranking': str, 'parsed_ranking': list}: оценка завершена
+    """
+    labels = [chr(65 + i) for i in range(len(stage1_results))]
+    label_to_model = {
+        f"Response {label}": get_display_name(result)
+        for label, result in zip(labels, stage1_results)
+    }
+
+    ranking_prompt = _build_ranking_prompt(user_query, stage1_results)
+    roles = list(COUNCIL_ROLES.items())
+    accumulated = ["" for _ in roles]
+
+    async def _stream_role(index, role_name, system_prompt):
+        await asyncio.sleep(index * 2.0)
+
+        gen = query_model_stream(ROLEPLAY_MODEL, [
+            {"role": "user", "content": f"""System Instruction: {system_prompt}
+
+User Query: {ranking_prompt}"""}
+        ], timeout=240.0, api_key=api_key, api_url=api_url)
+
+        first = True
+        async for chunk in gen:
+            if chunk is None:
+                break
+            content = chunk.get("content", "")
+            accumulated[index] += content
+            if first:
+                yield {"type": "active", "index": index, "role": role_name}
+                first = False
+            yield {"type": "chunk", "index": index, "content": content}
+
+    pending = [_stream_role(i, name, prompt) for i, (name, prompt) in enumerate(roles)]
+
+    for index, (role_name, _) in enumerate(roles):
+        yield {"type": "start", "index": index, "role": role_name}
+
+    active = list(range(len(pending)))
+    while active:
+        new_active = []
+        for index in active:
+            try:
+                event = await pending[index].__anext__()
+                yield event
+                new_active.append(index)
+            except StopAsyncIteration:
+                role_name = roles[index][0]
+                full_text = accumulated[index]
+                parsed = parse_ranking_from_text(full_text)
+                yield {
+                    "type": "done",
+                    "index": index,
+                    "role": role_name,
+                    "model": ROLEPLAY_MODEL,
+                    "ranking": full_text,
+                    "parsed_ranking": parsed,
+                }
+        active = new_active
+        if active:
+            await asyncio.sleep(0.1)
 
 
 async def stage3_synthesize_final(
@@ -313,8 +520,8 @@ async def stage3_synthesize_final(
 
     messages = [{"role": "user", "content": chairman_prompt}]
 
-    # Запрашиваем модель председателя
-    response = await query_model(CHAIRMAN_MODEL, messages, api_key=api_key, api_url=api_url)
+    # Запрашиваем модель председателя с увеличенным таймаутом из-за большого контекста
+    response = await query_model(CHAIRMAN_MODEL, messages, timeout=300.0, api_key=api_key, api_url=api_url)
 
     if response is None:
         # Запасной вариант, если председатель не ответил
@@ -327,6 +534,85 @@ async def stage3_synthesize_final(
         "model": CHAIRMAN_MODEL,
         "response": response.get('content', '')
     }
+
+
+async def stage3_synthesize_final_stream(
+    user_query: str,
+    stage1_results: List[Dict[str, Any]],
+    stage2_results: List[Dict[str, Any]],
+    mode: str = MODE_ENSEMBLE,
+    api_key: str = None,
+    api_url: str = None
+):
+    """
+    Этап 3 с потоковой передачей ответа председателя.
+
+    Yields:
+        Словари с ключами:
+        - {'type': 'start', 'model': str}: начало ответа
+        - {'type': 'chunk', 'content': str}: часть текста
+        - {'type': 'done', 'model': str, 'response': str}: ответ завершён
+    """
+    stage1_text = "\n\n".join([
+        f"Участник: {get_display_name(result)}\nОтвет: {result['response']}"
+        for result in stage1_results
+    ])
+
+    stage2_text = "\n\n".join([
+        f"Участник: {get_display_name(result)}\nОценка: {result['ranking']}"
+        for result in stage2_results
+    ])
+
+    if mode == MODE_ROLEPLAY:
+        chairman_prompt = f"""Ты — Председатель Совета ИИ. Твоя задача — изучить ответы экспертов (Скептика, Визионера, Исполнителя, Человека со стороны и Проверяющего факты) на запрос пользователя.
+Синтезируй их мнения в единое, взвешенное итоговое решение. Учти риски скептика, идеи визионера и шаги исполнителя.
+
+Исходный вопрос: {user_query}
+
+ЭТАП 1 — Ответы экспертов:
+{stage1_text}
+
+ЭТАП 2 — Взаимные рейтинги экспертов:
+{stage2_text}
+
+Учитывай также:
+- Взаимные рейтинги и то, что они говорят о качестве ответов
+- Любые закономерности согласия или разногласий
+
+Предоставь чёткий, хорошо обоснованный итоговый ответ, отражающий коллективную мудрость совета:"""
+    else:
+        chairman_prompt = f"""Вы — Председатель Совета LLM. Несколько моделей ИИ предоставили ответы на вопрос пользователя, а затем проранжировали ответы друг друга.
+
+Исходный вопрос: {user_query}
+
+ЭТАП 1 — Индивидуальные ответы:
+{stage1_text}
+
+ЭТАП 2 — Взаимные рейтинги:
+{stage2_text}
+
+Ваша задача как Председателя — синтезировать всю эту информацию в один полный, точный и исчерпывающий ответ на исходный вопрос пользователя. Учитывайте:
+- Индивидуальные ответы и их идеи
+- Взаимные рейтинги и то, что они говорят о качестве ответов
+- Любые закономерности согласия или разногласий
+
+Предоставьте чёткий, хорошо обоснованный итоговый ответ, отражающий коллективную мудрость совета:"""
+
+    messages = [{"role": "user", "content": chairman_prompt}]
+
+    yield {"type": "start", "model": CHAIRMAN_MODEL}
+
+    accumulated = ""
+    gen = query_model_stream(CHAIRMAN_MODEL, messages, timeout=300.0, api_key=api_key, api_url=api_url)
+
+    async for chunk in gen:
+        if chunk is None:
+            break
+        content = chunk.get("content", "")
+        accumulated += content
+        yield {"type": "chunk", "content": content}
+
+    yield {"type": "done", "model": CHAIRMAN_MODEL, "response": accumulated}
 
 
 def parse_ranking_from_text(ranking_text: str) -> List[str]:

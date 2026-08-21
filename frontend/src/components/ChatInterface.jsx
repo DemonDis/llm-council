@@ -6,8 +6,8 @@ import Stage3 from './Stage3';
 import './ChatInterface.css';
 
 const MODES = [
-  { value: 'ensemble', label: 'Битва моделей', description: 'Один вопрос — разным моделям' },
   { value: 'roleplay', label: 'Ролевой мозговой штурм', description: null },
+  { value: 'ensemble', label: 'Битва моделей', description: 'Один вопрос — разным моделям' },
 ];
 
 function roleplayDescription(roles) {
@@ -18,7 +18,7 @@ function roleplayDescription(roles) {
 const LOADING_TEXTS = {
   stage1: {
     ensemble: 'Этап 1: собираем ответы моделей...',
-    roleplay: 'Этап 1: собираем мнения ролей...',
+    roleplay: 'Этап 1: начинаем опрос ролей...',
   },
   stage2: {
     ensemble: 'Этап 2: взаимное ранжирование моделей...',
@@ -26,6 +26,75 @@ const LOADING_TEXTS = {
   },
   stage3: 'Этап 3: синтез итогового ответа...',
 };
+
+function getRoleProgress(msg, mode) {
+  if (mode !== 'roleplay') return null;
+  const slots = msg.streamingSlots || {};
+  const indices = Object.keys(slots).map(Number);
+  if (indices.length === 0) return null;
+  const total = msg.rolesTotal || indices.length;
+  const activeIdx = msg.activeRoleIndex ?? -1;
+  const activeRole = activeIdx >= 0 ? slots[activeIdx] : null;
+  const doneCount = indices.filter(i => {
+    const s = slots[i];
+    return s && s.response.length > 0 && i < activeIdx;
+  }).length;
+  return {
+    current: Math.max(activeIdx + 1, 1),
+    total,
+    role: activeRole?.role || slots[indices[indices.length - 1]]?.role || '',
+    hasContent: (activeRole?.response || '').length > 0,
+    doneCount,
+  };
+}
+
+function getRoleProgressStage2(msg, mode) {
+  if (mode !== 'roleplay') return null;
+  const slots = msg.streamingSlotsStage2 || {};
+  const indices = Object.keys(slots).map(Number);
+  if (indices.length === 0) return null;
+  const total = msg.rolesTotal || indices.length;
+  const activeIdx = msg.activeRoleIndexStage2 ?? -1;
+  const activeRole = activeIdx >= 0 ? slots[activeIdx] : null;
+  const doneCount = indices.filter(i => {
+    const s = slots[i];
+    return s && s.ranking.length > 0 && i < activeIdx;
+  }).length;
+  return {
+    current: Math.max(activeIdx + 1, 1),
+    total,
+    role: activeRole?.role || slots[indices[indices.length - 1]]?.role || '',
+    hasContent: (activeRole?.ranking || '').length > 0,
+    doneCount,
+  };
+}
+
+function RoleProgressIndicator({ progress, prefix }) {
+  if (!progress) return null;
+  return (
+    <div className="role-progress">
+      <div className="role-progress-bar">
+        <div
+          className="role-progress-fill"
+          style={{ width: `${(progress.doneCount / progress.total) * 100}%` }}
+        />
+      </div>
+      <div className="role-progress-text">
+        {prefix} {progress.current} из {progress.total}: {progress.role}
+        {!progress.hasContent && <span className="progress-waiting"> — ожидание ответа...</span>}
+      </div>
+    </div>
+  );
+}
+
+function StageLoading({ text }) {
+  return (
+    <div className="stage-loading">
+      <div className="spinner" />
+      <span>{text}</span>
+    </div>
+  );
+}
 
 export default function ChatInterface({
   conversation,
@@ -44,7 +113,7 @@ export default function ChatInterface({
 
   useEffect(() => {
     scrollToBottom();
-  }, [conversation]);
+  }, [conversation?.messages?.length]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -55,7 +124,6 @@ export default function ChatInterface({
   };
 
   const handleKeyDown = (e) => {
-    // Submit on Enter (without Shift)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
@@ -66,6 +134,7 @@ export default function ChatInterface({
     return (
       <div className="chat-interface">
         <div className="empty-state">
+          <div className="empty-state-icon">💬</div>
           <h2>Добро пожаловать в LLM Council</h2>
           <p>Создайте новый разговор, чтобы начать</p>
         </div>
@@ -78,6 +147,7 @@ export default function ChatInterface({
       <div className="messages-container">
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
+            <div className="empty-state-icon">💬</div>
             <h2>Начните разговор</h2>
             <p>Задайте вопрос, чтобы посоветоваться с LLM Council</p>
           </div>
@@ -97,39 +167,50 @@ export default function ChatInterface({
                 <div className="assistant-message">
                   <div className="message-label">LLM Council</div>
 
-                  {/* Stage 1 */}
-                  {msg.loading?.stage1 && (
-                    <div className="stage-loading">
-                      <div className="spinner"></div>
-                      <span>{LOADING_TEXTS.stage1[mode]}</span>
-                    </div>
+                  {msg.loading?.stage1 && !msg.stage1 && Object.keys(msg.streamingSlots || {}).length === 0 && (
+                    <StageLoading text={LOADING_TEXTS.stage1[mode]} />
                   )}
-                  {msg.stage1 && <Stage1 responses={msg.stage1} />}
+                  <RoleProgressIndicator
+                    progress={getRoleProgress(msg, mode)}
+                    prefix="Запрос"
+                  />
+                  {msg.stage1 ? (
+                    <Stage1 responses={msg.stage1} />
+                  ) : (
+                    <Stage1 streamingSlots={msg.streamingSlots} />
+                  )}
 
-                  {/* Stage 2 */}
-                  {msg.loading?.stage2 && (
-                    <div className="stage-loading">
-                      <div className="spinner"></div>
-                      <span>{LOADING_TEXTS.stage2[mode]}</span>
-                    </div>
+                  {msg.loading?.stage2 && !msg.stage2 && Object.keys(msg.streamingSlotsStage2 || {}).length === 0 && (
+                    <StageLoading text={LOADING_TEXTS.stage2[mode]} />
                   )}
-                  {msg.stage2 && (
+                  <RoleProgressIndicator
+                    progress={getRoleProgressStage2(msg, mode)}
+                    prefix="Оценка"
+                  />
+                  {msg.stage2 ? (
                     <Stage2
                       rankings={msg.stage2}
                       labelToModel={msg.metadata?.label_to_model}
                       aggregateRankings={msg.metadata?.aggregate_rankings}
                       mode={mode}
                     />
+                  ) : (
+                    <Stage2
+                      streamingSlots={msg.streamingSlotsStage2}
+                      rolesTotal={msg.rolesTotal}
+                      mode={mode}
+                    />
                   )}
 
-                  {/* Stage 3 */}
-                  {msg.loading?.stage3 && (
-                    <div className="stage-loading">
-                      <div className="spinner"></div>
-                      <span>{LOADING_TEXTS.stage3}</span>
-                    </div>
+                  {msg.loading?.stage3 && !msg.stage3 && !msg.streamingStage3 && (
+                    <StageLoading text={LOADING_TEXTS.stage3} />
                   )}
-                  {msg.stage3 && <Stage3 finalResponse={msg.stage3} />}
+                  {(msg.stage3 || msg.streamingStage3) && (
+                    <Stage3
+                      finalResponse={msg.stage3}
+                      streamingResponse={!msg.stage3 ? msg.streamingStage3 : null}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -138,7 +219,7 @@ export default function ChatInterface({
 
         {isLoading && (
           <div className="loading-indicator">
-            <div className="spinner"></div>
+            <div className="spinner" />
             <span>Совет размышляет...</span>
           </div>
         )}
@@ -163,12 +244,12 @@ export default function ChatInterface({
       <form className="input-form" onSubmit={handleSubmit}>
         <textarea
           className="message-input"
-          placeholder="Задайте вопрос... (Shift+Enter — новая строка, Enter — отправить)"
+          placeholder="Задайте вопрос... (Shift+Enter — новая строка)"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={isLoading}
-          rows={3}
+          rows={2}
         />
         <button
           type="submit"

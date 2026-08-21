@@ -9,17 +9,17 @@ import uuid
 import json
 import asyncio
 
-from . import storage
-from .config import OPENROUTER_API_KEY, OPENROUTER_API_URL, COUNCIL_ROLES
-from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
+import storage
+from config import OPENROUTER_API_KEY, OPENROUTER_API_URL, COUNCIL_ROLES
+from council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings, stage1_collect_roleplay_stream, stage2_collect_rankings_stream, stage3_synthesize_final_stream, get_display_name, MODE_ROLEPLAY
 
 app = FastAPI(title="LLM Council API")
 
 # Включаем CORS для локальной разработки
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False, # Обязательно False, если allow_origins=["*"] !
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -221,28 +221,103 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
                 )
 
             # Этап 1: сбор ответов
-            yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
-            stage1_results = await stage1_collect_responses(
-                request.content, request.mode,
-                api_key=request.api_key, api_url=request.api_url
-            )
+            if request.mode == MODE_ROLEPLAY:
+                from config import COUNCIL_ROLES
+                yield f"data: {json.dumps({'type': 'stage1_start', 'roles_total': len(COUNCIL_ROLES)})}\n\n"
+            else:
+                yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
+
+            if request.mode == MODE_ROLEPLAY:
+                # Потоковая передача для ролевого режима
+                stage1_results = []
+                async for chunk in stage1_collect_roleplay_stream(
+                    request.content,
+                    api_key=request.api_key, api_url=request.api_url
+                ):
+                    if chunk["type"] == "start":
+                        yield f"data: {json.dumps({'type': 'stage1_role_start', 'index': chunk['index'], 'role': chunk['role']})}\n\n"
+                    elif chunk["type"] == "active":
+                        yield f"data: {json.dumps({'type': 'stage1_role_active', 'index': chunk['index'], 'role': chunk['role']})}\n\n"
+                    elif chunk["type"] == "chunk":
+                        yield f"data: {json.dumps({'type': 'stage1_chunk', 'index': chunk['index'], 'content': chunk['content']})}\n\n"
+                    elif chunk["type"] == "done":
+                        stage1_results.append({
+                            "model": chunk["model"],
+                            "role": chunk["role"],
+                            "response": chunk["response"],
+                        })
+            else:
+                # Обычный режим без потоковой передачи
+                stage1_results = await stage1_collect_responses(
+                    request.content, request.mode,
+                    api_key=request.api_key, api_url=request.api_url
+                )
+
             yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
 
             # Этап 2: сбор рейтингов
             yield f"data: {json.dumps({'type': 'stage2_start'})}\n\n"
-            stage2_results, label_to_model = await stage2_collect_rankings(
-                request.content, stage1_results, request.mode,
-                api_key=request.api_key, api_url=request.api_url
-            )
+
+            if request.mode == MODE_ROLEPLAY:
+                # Потоковая передача для ролевого режима
+                stage2_results = []
+                async for chunk in stage2_collect_rankings_stream(
+                    request.content, stage1_results,
+                    api_key=request.api_key, api_url=request.api_url
+                ):
+                    if chunk["type"] == "start":
+                        yield f"data: {json.dumps({'type': 'stage2_role_start', 'index': chunk['index'], 'role': chunk['role']})}\n\n"
+                    elif chunk["type"] == "active":
+                        yield f"data: {json.dumps({'type': 'stage2_role_active', 'index': chunk['index'], 'role': chunk['role']})}\n\n"
+                    elif chunk["type"] == "chunk":
+                        yield f"data: {json.dumps({'type': 'stage2_chunk', 'index': chunk['index'], 'content': chunk['content']})}\n\n"
+                    elif chunk["type"] == "done":
+                        stage2_results.append({
+                            "model": chunk["model"],
+                            "role": chunk["role"],
+                            "ranking": chunk["ranking"],
+                            "parsed_ranking": chunk["parsed_ranking"],
+                        })
+                # label_to_model вычисляется из stage1_results (детерминировано)
+                labels = [chr(65 + i) for i in range(len(stage1_results))]
+                label_to_model = {
+                    f"Response {label}": get_display_name(result)
+                    for label, result in zip(labels, stage1_results)
+                }
+            else:
+                stage2_results, label_to_model = await stage2_collect_rankings(
+                    request.content, stage1_results, request.mode,
+                    api_key=request.api_key, api_url=request.api_url
+                )
+
             aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
             yield f"data: {json.dumps({'type': 'stage2_complete', 'data': stage2_results, 'metadata': {'mode': request.mode, 'label_to_model': label_to_model, 'aggregate_rankings': aggregate_rankings}})}\n\n"
 
             # Этап 3: синтез итогового ответа
             yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
-            stage3_result = await stage3_synthesize_final(
-                request.content, stage1_results, stage2_results, request.mode,
-                api_key=request.api_key, api_url=request.api_url
-            )
+
+            if request.mode == MODE_ROLEPLAY:
+                # Потоковая передача для ролевого режима
+                stage3_result = None
+                async for chunk in stage3_synthesize_final_stream(
+                    request.content, stage1_results, stage2_results, request.mode,
+                    api_key=request.api_key, api_url=request.api_url
+                ):
+                    if chunk["type"] == "start":
+                        yield f"data: {json.dumps({'type': 'stage3_role_start', 'model': chunk['model']})}\n\n"
+                    elif chunk["type"] == "chunk":
+                        yield f"data: {json.dumps({'type': 'stage3_chunk', 'content': chunk['content']})}\n\n"
+                    elif chunk["type"] == "done":
+                        stage3_result = {
+                            "model": chunk["model"],
+                            "response": chunk["response"],
+                        }
+            else:
+                stage3_result = await stage3_synthesize_final(
+                    request.content, stage1_results, stage2_results, request.mode,
+                    api_key=request.api_key, api_url=request.api_url
+                )
+
             yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
 
             # Ожидаем завершения генерации заголовка, если она была запущена

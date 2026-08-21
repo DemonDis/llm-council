@@ -1,5 +1,14 @@
-import { useState, useEffect } from 'react';
 import './Sidebar.css';
+
+function getDeviceLabel(conv, deviceId) {
+  if (conv.device_id === deviceId) return 'С этого компьютера';
+  if (conv.device_ip) return conv.device_ip;
+  return 'Другой компьютер';
+}
+
+function isOwn(conv, deviceId) {
+  return conv.device_id === deviceId || !conv.device_id;
+}
 
 export default function Sidebar({
   conversations,
@@ -10,20 +19,12 @@ export default function Sidebar({
   onDeleteConversation,
   onOpenSettings,
 }) {
-  const getDeviceLabel = (conv) => {
-    if (conv.device_id === deviceId) return 'С этого компьютера';
-    if (conv.device_ip) return conv.device_ip;
-    return 'Другой компьютер';
-  };
-
-  const isOwn = (conv) => conv.device_id === deviceId || !conv.device_id;
-
   return (
     <div className="sidebar">
       <div className="sidebar-header">
         <h1>LLM Council</h1>
         <button className="new-conversation-btn" onClick={onNewConversation}>
-          + Новый разговор
+          Новый разговор
         </button>
       </div>
 
@@ -43,7 +44,7 @@ export default function Sidebar({
                 <div className="conversation-title">
                   {conv.title || 'Новый разговор'}
                 </div>
-                {isOwn(conv) && (
+                {isOwn(conv, deviceId) && (
                   <button
                     className="conversation-delete"
                     onClick={(e) => {
@@ -58,7 +59,7 @@ export default function Sidebar({
                 )}
               </div>
               <div className="conversation-meta">
-                {conv.message_count} сообщений · {getDeviceLabel(conv)}
+                {conv.message_count} сообщений · {getDeviceLabel(conv, deviceId)}
               </div>
             </div>
           ))

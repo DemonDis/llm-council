@@ -1,153 +1,172 @@
 .stage2 {
-  background: #fafafa;
+  /* inherits base .stage styles; no background override needed */
 }
 
-.stage2 h4 {
-  margin: 20px 0 8px 0;
-  color: #333;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.stage2 h4:first-of-type {
-  margin-top: 0;
-}
+/* ── Description ─────────────────────────────────────── */
 
 .stage-description {
-  margin: 0 0 12px 0;
-  color: #666;
+  margin: 0 0 16px 0;
+  color: #888;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* ── Tabs (uses Stage1 base .tabs/.tab) ──────────────── */
+
+.stage2 .tabs {
+  margin-bottom: 0;
+}
+
+/* ── Tab content panel ───────────────────────────────── */
+
+.stage2 .tab-content {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 6px;
+  border: 1px solid #eaecef;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  margin-bottom: 20px;
+}
+
+/* ── Model label above ranking text ──────────────────── */
+
+.stage2 .ranking-model {
+  color: #999;
+  font-size: 12px;
+  font-family: monospace;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+/* ── Ranking body text ───────────────────────────────── */
+
+.stage2 .ranking-content {
+  color: #333;
+  line-height: 1.65;
+  font-size: 14px;
+}
+
+/* ── Parsed ranking (extracted from raw text) ────────── */
+
+.parsed-ranking {
+  margin-top: 16px;
+  padding: 16px 20px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #eaecef;
+}
+
+.parsed-ranking-label {
+  color: #2a7ae2;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+.parsed-ranking ol {
+  margin: 0;
+  padding-left: 20px;
+  color: #333;
+}
+
+.parsed-ranking li {
+  margin: 3px 0;
+  font-family: monospace;
   font-size: 13px;
   line-height: 1.5;
 }
 
+/* ── Aggregate rankings ──────────────────────────────── */
+
 .aggregate-rankings {
   background: #f0f7ff;
-  padding: 16px;
+  padding: 20px;
   border-radius: 8px;
-  margin-bottom: 20px;
-  border: 2px solid #d0e7ff;
+  border: 1px solid #d0e7ff;
+  margin-top: 20px;
 }
 
-.aggregate-rankings h4 {
-  margin: 0 0 12px 0;
+.aggregate-header {
   color: #2a7ae2;
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.aggregate-description {
+  color: #6b8db5;
+  font-size: 13px;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
 }
 
 .aggregate-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .aggregate-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px;
+  padding: 10px 14px;
   background: #ffffff;
   border-radius: 6px;
-  border: 1px solid #d0e7ff;
+  border: 1px solid #d8e8f8;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.aggregate-item:hover {
+  border-color: #b0d4f1;
+}
+
+.aggregate-item--first {
+  border-color: #93c5fd;
+  box-shadow: 0 1px 4px rgba(42, 122, 226, 0.08);
 }
 
 .rank-position {
   color: #2a7ae2;
   font-weight: 700;
-  font-size: 16px;
-  min-width: 35px;
+  font-size: 15px;
+  min-width: 32px;
+  font-variant-numeric: tabular-nums;
+}
+
+.aggregate-item--first .rank-position {
+  font-size: 17px;
 }
 
 .rank-model {
   flex: 1;
   color: #333;
   font-family: monospace;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
 }
 
 .rank-score {
-  color: #666;
+  color: #555;
   font-size: 13px;
   font-family: monospace;
-}
-
-.stage2 .tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.stage2 .tab {
-  padding: 8px 16px;
-  background: #ffffff;
-  border: 1px solid #d0d0d0;
-  border-radius: 6px 6px 0 0;
-  color: #666;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.stage2 .tab:hover {
-  background: #f0f0f0;
-  color: #333;
-  border-color: #4a90e2;
-}
-
-.stage2 .tab.active {
-  background: #ffffff;
-  color: #4a90e2;
-  border-color: #4a90e2;
-  border-bottom-color: #ffffff;
-  font-weight: 600;
-}
-
-.stage2 .tab-content {
-  background: #ffffff;
-  padding: 16px;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
-  margin-bottom: 20px;
-}
-
-.ranking-model {
-  color: #888;
-  font-size: 12px;
-  font-family: monospace;
-  margin-bottom: 12px;
-}
-
-.ranking-content {
-  color: #333;
-  line-height: 1.6;
-  font-size: 14px;
-}
-
-.parsed-ranking {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 2px solid #e0e0e0;
-}
-
-.parsed-ranking strong {
-  color: #2a7ae2;
-  font-size: 13px;
-}
-
-.parsed-ranking ol {
-  margin: 8px 0 0 0;
-  padding-left: 24px;
-  color: #333;
-}
-
-.parsed-ranking li {
-  margin: 4px 0;
-  font-family: monospace;
-  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 .rank-count {
-  color: #999;
+  color: #aaa;
   font-size: 12px;
+}
+
+/* ── Streaming indicators ────────────────────────────── */
+
+.stage2 .streaming-indicator {
+  color: #4a90e2;
+  font-weight: 500;
+}
+
+.stage2 .tab-loading-indicator {
+  color: #4a90e2;
 }

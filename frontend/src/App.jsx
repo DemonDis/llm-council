@@ -20,7 +20,17 @@ function loadSettings() {
 function loadDeviceId() {
   let id = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
   if (!id) {
-    id = crypto.randomUUID();
+    // Используем fallback для сред без поддержки crypto.randomUUID (например, http без localhost)
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      id = crypto.randomUUID();
+    } else {
+      // Fallback генератор UUID v4
+      id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
     localStorage.setItem(DEVICE_ID_STORAGE_KEY, id);
   }
   return id;
@@ -31,7 +41,7 @@ function App() {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState('ensemble');
+  const [mode, setMode] = useState('roleplay');
   const [settings, setSettings] = useState(loadSettings);
   const [envConfig, setEnvConfig] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -144,6 +154,12 @@ function App() {
         stage2: null,
         stage3: null,
         metadata: null,
+        streamingSlots: {},
+        streamingSlotsStage2: {},
+        streamingStage3: null,
+        rolesTotal: 0,
+        activeRoleIndex: -1,
+        activeRoleIndexStage2: -1,
         loading: {
           stage1: false,
           stage2: false,
@@ -170,6 +186,9 @@ function App() {
                 const messages = [...prev.messages];
                 const lastMsg = messages[messages.length - 1];
                 lastMsg.loading.stage1 = true;
+                if (event.roles_total) {
+                  lastMsg.rolesTotal = event.roles_total;
+                }
                 return { ...prev, messages };
               });
               break;
@@ -180,6 +199,68 @@ function App() {
                 const lastMsg = messages[messages.length - 1];
                 lastMsg.stage1 = event.data;
                 lastMsg.loading.stage1 = false;
+                lastMsg.streamingSlots = {};
+                lastMsg.activeRoleIndex = -1;
+                return { ...prev, messages };
+              });
+              break;
+
+            case 'stage1_role_start':
+              setCurrentConversation((prev) => {
+                const messages = [...prev.messages];
+                const lastMsg = messages[messages.length - 1];
+                lastMsg.streamingSlots = {
+                  ...lastMsg.streamingSlots,
+                  [event.index]: { role: event.role, response: '' },
+                };
+                return { ...prev, messages };
+              });
+              break;
+
+            case 'stage1_role_active':
+              setCurrentConversation((prev) => {
+                const messages = [...prev.messages];
+                const lastMsg = messages[messages.length - 1];
+                lastMsg.activeRoleIndex = event.index;
+                return { ...prev, messages };
+              });
+              break;
+
+            case 'stage1_chunk':
+              setCurrentConversation((prev) => {
+                const messages = [...prev.messages];
+                const lastMsg = messages[messages.length - 1];
+                const slots = { ...lastMsg.streamingSlots };
+                if (slots[event.index]) {
+                  slots[event.index] = {
+                    ...slots[event.index],
+                    response: slots[event.index].response + event.content,
+                  };
+                }
+                lastMsg.streamingSlots = slots;
+                return { ...prev, messages };
+              });
+              break;
+
+            case 'stage3_role_start':
+              setCurrentConversation((prev) => {
+                const messages = [...prev.messages];
+                const lastMsg = messages[messages.length - 1];
+                lastMsg.streamingStage3 = { model: event.model, response: '' };
+                return { ...prev, messages };
+              });
+              break;
+
+            case 'stage3_chunk':
+              setCurrentConversation((prev) => {
+                const messages = [...prev.messages];
+                const lastMsg = messages[messages.length - 1];
+                if (lastMsg.streamingStage3) {
+                  lastMsg.streamingStage3 = {
+                    ...lastMsg.streamingStage3,
+                    response: lastMsg.streamingStage3.response + event.content,
+                  };
+                }
                 return { ...prev, messages };
               });
               break;
@@ -193,6 +274,43 @@ function App() {
               });
               break;
 
+            case 'stage2_role_start':
+              setCurrentConversation((prev) => {
+                const messages = [...prev.messages];
+                const lastMsg = messages[messages.length - 1];
+                lastMsg.streamingSlotsStage2 = {
+                  ...lastMsg.streamingSlotsStage2,
+                  [event.index]: { role: event.role, ranking: '' },
+                };
+                return { ...prev, messages };
+              });
+              break;
+
+            case 'stage2_role_active':
+              setCurrentConversation((prev) => {
+                const messages = [...prev.messages];
+                const lastMsg = messages[messages.length - 1];
+                lastMsg.activeRoleIndexStage2 = event.index;
+                return { ...prev, messages };
+              });
+              break;
+
+            case 'stage2_chunk':
+              setCurrentConversation((prev) => {
+                const messages = [...prev.messages];
+                const lastMsg = messages[messages.length - 1];
+                const slots = { ...lastMsg.streamingSlotsStage2 };
+                if (slots[event.index]) {
+                  slots[event.index] = {
+                    ...slots[event.index],
+                    ranking: slots[event.index].ranking + event.content,
+                  };
+                }
+                lastMsg.streamingSlotsStage2 = slots;
+                return { ...prev, messages };
+              });
+              break;
+
             case 'stage2_complete':
               setCurrentConversation((prev) => {
                 const messages = [...prev.messages];
@@ -200,6 +318,8 @@ function App() {
                 lastMsg.stage2 = event.data;
                 lastMsg.metadata = event.metadata;
                 lastMsg.loading.stage2 = false;
+                lastMsg.streamingSlotsStage2 = {};
+                lastMsg.activeRoleIndexStage2 = -1;
                 return { ...prev, messages };
               });
               break;
@@ -219,6 +339,7 @@ function App() {
                 const lastMsg = messages[messages.length - 1];
                 lastMsg.stage3 = event.data;
                 lastMsg.loading.stage3 = false;
+                lastMsg.streamingStage3 = null;
                 return { ...prev, messages };
               });
               break;
