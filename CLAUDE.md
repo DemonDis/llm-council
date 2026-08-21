@@ -18,7 +18,7 @@ LLM Council — это трёхэтапная система обсуждени�
 
 ### Структура бэкенда (`backend/`)
 
-Модули приложения лежат в `backend/src/` (`config.py`, `council.py`, `openrouter.py`, `storage.py`); в `backend/` остаются только точка входа `main.py`, `roles.json` и `.env`.
+Модули приложения лежат в `backend/src/` (`config.py`, `council.py`, `openrouter.py`, `storage.py`, плюс `schemas.py`, `utils.py` и роутеры в `routes/`); в `backend/` остаются только точка входа `main.py`, `roles.json` и `.env`.
 
 **`src/config.py`**
 - Содержит `COUNCIL_MODELS` (список идентификаторов моделей OpenRouter)
@@ -64,13 +64,23 @@ LLM Council — это трёхэтапная система обсуждени�
 - Сообщения ассистента содержат: `{role, stage1, stage2, stage3}`
 - Важно: метаданные (label_to_model, aggregate_rankings) НЕ сохраняются в хранилище, только возвращаются через API
 
-**`main.py`**
-- FastAPI-приложение с CORS для localhost:5173 и localhost:3000
+**`src/schemas.py`**
+- Pydantic-модели запросов/ответов: `CreateConversationRequest`, `SendMessageRequest`, `ConversationMetadata`, `Conversation`
+
+**`src/utils.py`**
+- `_get_lan_ip()` / `get_client_ip()`: IP клиента; для localhost возвращается реальный сетевой IP машины
+
+**`src/routes/conversations.py`** — роутер CRUD
 - `GET /api/config` → `{api_key_configured, api_url_configured, api_url, roles}` (ключ никогда не возвращается; `roles` — список имён ролей из `backend/roles.json` для показа в UI)
 - `GET /api/conversations?mode=...` (фильтр по режиму) / `POST /api/conversations` (принимает `device_id` и `mode`; `device_ip` берётся из IP клиента) / `GET /api/conversations/{id}`
 - `DELETE /api/conversations/{id}?device_id=...`: удаление только «своего» разговора (чужой → 403; старые разговоры без device_id удалять можно)
+
+**`src/routes/messages.py`** — роутер сообщений
 - `POST /api/conversations/{id}/message` и `/message/stream` — принимают `SendMessageRequest`: `content`, `mode` (по умолчанию `ensemble`), `api_key`, `api_url`, `device_id`
 - Метаданные (возвращаются с сообщением) включают: режим, сопоставление label_to_model и агрегированные рейтинги
+
+**`main.py`**
+- Только каркас: создание FastAPI-приложения, CORS, подключение роутеров через `include_router`, health-check `/` и `__main__`-блок запуска uvicorn
 
 ### Структура фронтенда (`frontend/src/`)
 
