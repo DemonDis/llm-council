@@ -10,6 +10,7 @@ from typing import Any, Dict, List
 import staff
 from openrouter import query_model, query_model_stream
 from config import DIRECTOR_MODEL
+import tokens as tokens_mod
 
 from .prompts import build_dialogue_system_prompt
 
@@ -64,9 +65,17 @@ async def dialogue_reply(
     )
 
     if response is None:
-        return {"model": DIRECTOR_MODEL, "response": "Error: unable to generate reply."}
+        return {
+            "model": DIRECTOR_MODEL,
+            "response": "Error: unable to generate reply.",
+            "tokens": tokens_mod.usage(),
+        }
 
-    return {"model": DIRECTOR_MODEL, "response": response.get("content", "")}
+    return {
+        "model": DIRECTOR_MODEL,
+        "response": response.get("content", ""),
+        "tokens": response.get("usage") or tokens_mod.usage(),
+    }
 
 
 async def dialogue_reply_stream(
@@ -82,7 +91,7 @@ async def dialogue_reply_stream(
     Yields:
         - {'type': 'start', 'model': str}
         - {'type': 'chunk', 'content': str}
-        - {'type': 'done', 'model': str, 'response': str}
+        - {'type': 'done', 'model': str, 'response': str, 'tokens': {'prompt','completion'}}
     """
     profile = staff.load_staff_profile(staff.GROUP_LEADERS, profile_id)
     if profile is None:
@@ -97,8 +106,10 @@ async def dialogue_reply_stream(
     yield {"type": "start", "model": DIRECTOR_MODEL}
 
     accumulated = ""
+    usage_stats = {}
     gen = query_model_stream(
-        DIRECTOR_MODEL, messages, timeout=240.0, api_key=api_key, api_url=api_url
+        DIRECTOR_MODEL, messages, timeout=240.0, api_key=api_key, api_url=api_url,
+        stats=usage_stats,
     )
     async for chunk in gen:
         if chunk is None:
@@ -107,4 +118,12 @@ async def dialogue_reply_stream(
         accumulated += content
         yield {"type": "chunk", "content": content}
 
-    yield {"type": "done", "model": DIRECTOR_MODEL, "response": accumulated}
+    yield {
+        "type": "done",
+        "model": DIRECTOR_MODEL,
+        "response": accumulated,
+        "tokens": usage_stats or tokens_mod.usage(
+            prompt_tokens=tokens_mod.count_messages_tokens(messages),
+            completion_tokens=tokens_mod.count_tokens(accumulated),
+        ),
+    }

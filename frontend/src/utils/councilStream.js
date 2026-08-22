@@ -28,6 +28,8 @@ function createDraft(fromStored = null) {
     stage2: fromStored?.stage2 || null,
     stage3: fromStored?.stage3 || null,
     metadata: fromStored?.metadata || null,
+    // Расход токенов ассистента {'prompt','completion'}
+    tokens: fromStored?.tokens ?? null,
     streamingReply: null,
     streamingSlots: {},
     streamingSlotsStage2: {},
@@ -68,6 +70,7 @@ function applyEvent(prev, eventType, event) {
 
     case 'reply_complete':
       m.content = event.data?.response ?? m.streamingReply;
+      if (event.data?.tokens) m.tokens = event.data.tokens;
       m.streamingReply = null;
       m.loading.reply = false;
       break;
@@ -146,6 +149,7 @@ function applyEvent(prev, eventType, event) {
 
     case 'stage3_complete':
       m.stage3 = event.data;
+      if (event.data?.tokens) m.tokens = event.data.tokens;
       m.loading.stage3 = false;
       m.streamingStage3 = null;
       break;

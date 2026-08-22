@@ -6,6 +6,7 @@ import httpx
 from typing import List, Dict, Any, Optional
 from config import OPENROUTER_API_KEY, OPENROUTER_API_URL
 from llm_logs import log_llm_call
+import tokens as tokens_mod
 
 # Создаём SSL-контекст с отключённой верификацией (как в rick/backend/src/app.py)
 _SSL_CTX = ssl.create_default_context()
@@ -74,7 +75,12 @@ async def query_model(
 
             result = {
                 'content': message.get('content'),
-                'reasoning_details': message.get('reasoning_details')
+                'reasoning_details': message.get('reasoning_details'),
+                # Оценка расхода токенов (tiktoken): запрос + ответ
+                'usage': tokens_mod.usage(
+                    prompt_tokens=tokens_mod.count_messages_tokens(messages),
+                    completion_tokens=tokens_mod.count_tokens(message.get('content') or ''),
+                ),
             }
             log_llm_call(
                 model, messages, response=result,
@@ -96,10 +102,15 @@ async def query_model_stream(
     messages: List[Dict[str, str]],
     timeout: float = 120.0,
     api_key: Optional[str] = None,
-    api_url: Optional[str] = None
+    api_url: Optional[str] = None,
+    stats: Optional[Dict[str, int]] = None
 ):
     """
     Запрос к модели через API OpenRouter с потоковой передачей токенов.
+
+    Args:
+        stats: необязательный словарь; после завершения генерации содержит
+            оценку расхода токенов {'prompt', 'completion'}.
 
     Yields:
         Словари с ключом 'content' (str) по мере поступления токенов.
@@ -150,6 +161,12 @@ async def query_model_stream(
                     except json.JSONDecodeError:
                         continue
 
+        if stats is not None:
+            stats.clear()
+            stats.update(tokens_mod.usage(
+                prompt_tokens=tokens_mod.count_messages_tokens(messages),
+                completion_tokens=tokens_mod.count_tokens(accumulated),
+            ))
         log_llm_call(
             model, messages,
             response={"content": accumulated},

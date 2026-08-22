@@ -205,6 +205,14 @@
   border-radius: 999px;
 }
 
+/* Расход токенов под сообщением */
+.token-badge {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #a0a6ad;
+  user-select: all;
+}
+
 /* Ответ руководителя в режиме диалога */
 .assistant-bubble {
   display: inline-block;

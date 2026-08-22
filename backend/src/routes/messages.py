@@ -89,6 +89,7 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
         response_payload = {
             "model": reply["model"],
             "content": content,
+            "tokens": reply.get("tokens"),
         }
     elif mode == MODE_DIALOGUE:
         reply = await dialogue_reply(
@@ -106,6 +107,7 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
         response_payload = {
             "model": reply["model"],
             "content": content,
+            "tokens": reply.get("tokens"),
         }
     else:
         stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
@@ -115,11 +117,21 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
             request.api_url
         )
         content = None
+        # Суммарный расход токенов по всем вызовам трёх этапов
+        usage_total = {"prompt": 0, "completion": 0}
+        for entry in (stage1_results or []) + (stage2_results or []):
+            if isinstance(entry.get("tokens"), dict):
+                usage_total["prompt"] += entry["tokens"].get("prompt") or 0
+                usage_total["completion"] += entry["tokens"].get("completion") or 0
+        if isinstance((stage3_result or {}).get("tokens"), dict):
+            usage_total["prompt"] += stage3_result["tokens"].get("prompt") or 0
+            usage_total["completion"] += stage3_result["tokens"].get("completion") or 0
         response_payload = {
             "stage1": stage1_results,
             "stage2": stage2_results,
             "stage3": stage3_result,
-            "metadata": metadata
+            "metadata": metadata,
+            "tokens": usage_total,
         }
 
     storage.add_assistant_message(
@@ -128,7 +140,8 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
         stage2_results,
         stage3_result,
         metadata=metadata,
-        content=content
+        content=content,
+        tokens=response_payload.get("tokens")
     )
 
     return response_payload

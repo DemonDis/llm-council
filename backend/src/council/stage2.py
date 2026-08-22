@@ -62,13 +62,17 @@ async def stage2_collect_rankings(
         for role_name, response in zip(COUNCIL_ROLES.keys(), responses):
             if response is not None:
                 full_text = response.get('content', '')
+                entry_tokens = response.get('usage')
                 parsed = parse_ranking_from_text(full_text)
-                stage2_results.append({
+                entry = {
                     "model": ROLEPLAY_MODEL,
                     "role": role_name,
                     "ranking": full_text,
                     "parsed_ranking": parsed
-                })
+                }
+                if entry_tokens:
+                    entry["tokens"] = entry_tokens
+                stage2_results.append(entry)
 
         return stage2_results, label_to_model
 
@@ -84,11 +88,14 @@ async def stage2_collect_rankings(
         if response is not None:
             full_text = response.get('content', '')
             parsed = parse_ranking_from_text(full_text)
-            stage2_results.append({
+            entry = {
                 "model": model,
                 "ranking": full_text,
                 "parsed_ranking": parsed
-            })
+            }
+            if response.get('usage'):
+                entry["tokens"] = response['usage']
+            stage2_results.append(entry)
 
     return stage2_results, label_to_model
 
@@ -117,13 +124,15 @@ async def stage2_collect_rankings_stream(
     ranking_prompt = build_ranking_prompt(user_query, stage1_results)
     roles = list(COUNCIL_ROLES.items())
     accumulated = ["" for _ in roles]
+    usage_stats_list = [{} for _ in roles]
 
     async def _stream_role(index, role_name, system_prompt):
         await asyncio.sleep(index * 2.0)
 
+        usage_stats = {}
         gen = query_model_stream(ROLEPLAY_MODEL, [
             {"role": "user", "content": combine_system_and_user(system_prompt, ranking_prompt)}
-        ], timeout=240.0, api_key=api_key, api_url=api_url)
+        ], timeout=240.0, api_key=api_key, api_url=api_url, stats=usage_stats)
 
         first = True
         async for chunk in gen:
@@ -135,6 +144,7 @@ async def stage2_collect_rankings_stream(
                 yield {"type": "active", "index": index, "role": role_name}
                 first = False
             yield {"type": "chunk", "index": index, "content": content}
+        usage_stats_list[index] = usage_stats
 
     pending = [_stream_role(i, name, prompt) for i, (name, prompt) in enumerate(roles)]
 
@@ -153,7 +163,7 @@ async def stage2_collect_rankings_stream(
                 role_name = roles[index][0]
                 full_text = accumulated[index]
                 parsed = parse_ranking_from_text(full_text)
-                yield {
+                done = {
                     "type": "done",
                     "index": index,
                     "role": role_name,
@@ -161,6 +171,9 @@ async def stage2_collect_rankings_stream(
                     "ranking": full_text,
                     "parsed_ranking": parsed,
                 }
+                if usage_stats_list[index]:
+                    done["tokens"] = usage_stats_list[index]
+                yield done
         active = new_active
         if active:
             await asyncio.sleep(0.1)

@@ -6,6 +6,8 @@ from openrouter import query_model, query_model_stream
 from config import CHAIRMAN_MODEL
 
 from .common import MODE_ENSEMBLE
+import tokens as tokens_mod
+
 from .prompts import build_chairman_prompt
 
 
@@ -41,12 +43,14 @@ async def stage3_synthesize_final(
         # Запасной вариант, если председатель не ответил
         return {
             "model": CHAIRMAN_MODEL,
-            "response": "Error: Unable to generate final synthesis."
+            "response": "Error: Unable to generate final synthesis.",
+            "tokens": tokens_mod.usage(),
         }
 
     return {
         "model": CHAIRMAN_MODEL,
-        "response": response.get('content', '')
+        "response": response.get('content', ''),
+        "tokens": response.get('usage') or tokens_mod.usage(),
     }
 
 
@@ -73,7 +77,11 @@ async def stage3_synthesize_final_stream(
     yield {"type": "start", "model": CHAIRMAN_MODEL}
 
     accumulated = ""
-    gen = query_model_stream(CHAIRMAN_MODEL, messages, timeout=300.0, api_key=api_key, api_url=api_url)
+    usage_stats = {}
+    gen = query_model_stream(
+        CHAIRMAN_MODEL, messages, timeout=300.0, api_key=api_key, api_url=api_url,
+        stats=usage_stats,
+    )
 
     async for chunk in gen:
         if chunk is None:
@@ -82,4 +90,12 @@ async def stage3_synthesize_final_stream(
         accumulated += content
         yield {"type": "chunk", "content": content}
 
-    yield {"type": "done", "model": CHAIRMAN_MODEL, "response": accumulated}
+    yield {
+        "type": "done",
+        "model": CHAIRMAN_MODEL,
+        "response": accumulated,
+        "tokens": usage_stats or tokens_mod.usage(
+            prompt_tokens=tokens_mod.count_messages_tokens(messages),
+            completion_tokens=tokens_mod.count_tokens(accumulated),
+        ),
+    }

@@ -35,10 +35,13 @@ async def stage1_collect_ensemble(
     stage1_results = []
     for model, response in responses.items():
         if response is not None:  # Включаем только успешные ответы
-            stage1_results.append({
+            entry = {
                 "model": model,
                 "response": response.get('content', '')
-            })
+            }
+            if response.get('usage'):
+                entry["tokens"] = response['usage']
+            stage1_results.append(entry)
 
     return stage1_results
 
@@ -82,11 +85,14 @@ async def stage1_collect_roleplay(
     stage1_results = []
     for role_name, response in zip(COUNCIL_ROLES.keys(), responses):
         if response is not None:  # Включаем только успешные ответы
-            stage1_results.append({
+            entry = {
                 "model": ROLEPLAY_MODEL,
                 "role": role_name,
                 "response": response.get('content', '')
-            })
+            }
+            if response.get('usage'):
+                entry["tokens"] = response['usage']
+            stage1_results.append(entry)
 
     return stage1_results
 
@@ -110,14 +116,16 @@ async def stage1_collect_roleplay_stream(
     """
     accumulated = ["" for _ in COUNCIL_ROLES]
     roles = list(COUNCIL_ROLES.items())
+    usage_stats_list = [{} for _ in roles]
 
     async def _stream_role(index, role_name, system_prompt):
         # Задержка перед запросом к API для rate-limiting (все роли обращаются к одной модели)
         await asyncio.sleep(index * 2.0)
 
+        usage_stats = {}
         gen = query_model_stream(ROLEPLAY_MODEL, [
             {"role": "user", "content": combine_system_and_user(system_prompt, user_query)}
-        ], api_key=api_key, api_url=api_url)
+        ], api_key=api_key, api_url=api_url, stats=usage_stats)
 
         first = True
         async for chunk in gen:
@@ -129,6 +137,7 @@ async def stage1_collect_roleplay_stream(
                 yield {"type": "active", "index": index, "role": role_name}
                 first = False
             yield {"type": "chunk", "index": index, "content": content}
+        usage_stats_list[index] = usage_stats
 
     # Создаём все потоки сразу
     pending = [_stream_role(i, name, prompt) for i, (name, prompt) in enumerate(roles)]
@@ -148,13 +157,16 @@ async def stage1_collect_roleplay_stream(
                 new_active.append(index)
             except StopAsyncIteration:
                 role_name = roles[index][0]
-                yield {
+                done = {
                     "type": "done",
                     "index": index,
                     "role": role_name,
                     "model": ROLEPLAY_MODEL,
                     "response": accumulated[index],
                 }
+                if usage_stats_list[index]:
+                    done["tokens"] = usage_stats_list[index]
+                yield done
         active = new_active
 
         if active:

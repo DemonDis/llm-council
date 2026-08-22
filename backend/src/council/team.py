@@ -10,6 +10,7 @@ from typing import Any, Dict, List
 import staff
 from openrouter import query_model, query_model_stream
 from config import STAFF_MODEL
+import tokens as tokens_mod
 
 from .prompts import build_staff_system_prompt
 
@@ -78,9 +79,17 @@ async def team_reply(
     )
 
     if response is None:
-        return {"model": STAFF_MODEL, "response": "Error: unable to generate reply."}
+        return {
+            "model": STAFF_MODEL,
+            "response": "Error: unable to generate reply.",
+            "tokens": tokens_mod.usage(),
+        }
 
-    return {"model": STAFF_MODEL, "response": response.get("content", "")}
+    return {
+        "model": STAFF_MODEL,
+        "response": response.get("content", ""),
+        "tokens": response.get("usage") or tokens_mod.usage(),
+    }
 
 
 async def team_reply_stream(
@@ -97,7 +106,7 @@ async def team_reply_stream(
     Yields:
         - {'type': 'start', 'model': str}
         - {'type': 'chunk', 'content': str}
-        - {'type': 'done', 'model': str, 'response': str}
+        - {'type': 'done', 'model': str, 'response': str, 'tokens': {'prompt','completion'}}
     """
     profiles = load_team_profiles(profile_ids)
     if not profiles:
@@ -113,8 +122,10 @@ async def team_reply_stream(
     yield {"type": "start", "model": STAFF_MODEL}
 
     accumulated = ""
+    usage_stats = {}
     gen = query_model_stream(
-        STAFF_MODEL, messages, timeout=240.0, api_key=api_key, api_url=api_url
+        STAFF_MODEL, messages, timeout=240.0, api_key=api_key, api_url=api_url,
+        stats=usage_stats,
     )
     async for chunk in gen:
         if chunk is None:
@@ -123,4 +134,12 @@ async def team_reply_stream(
         accumulated += content
         yield {"type": "chunk", "content": content}
 
-    yield {"type": "done", "model": STAFF_MODEL, "response": accumulated}
+    yield {
+        "type": "done",
+        "model": STAFF_MODEL,
+        "response": accumulated,
+        "tokens": usage_stats or tokens_mod.usage(
+            prompt_tokens=tokens_mod.count_messages_tokens(messages),
+            completion_tokens=tokens_mod.count_tokens(accumulated),
+        ),
+    }

@@ -84,6 +84,33 @@ function StageLoading({ text }) {
   );
 }
 
+// Русская плюрализация слова «токен»
+function tokenWord(n) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'токен';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'токена';
+  return 'токенов';
+}
+
+// Бейдж расхода токенов под сообщением:
+// число — у сообщения пользователя, {'prompt','completion'} — у ответа ассистента
+function TokenBadge({ tokens }) {
+  if (tokens == null) return null;
+  let text = '';
+  if (typeof tokens === 'number') {
+    text = `${tokens.toLocaleString('ru-RU')} ${tokenWord(tokens)}`;
+  } else if (typeof tokens === 'object') {
+    const p = tokens.prompt || 0;
+    const c = tokens.completion || 0;
+    if (!p && !c) return null;
+    text = `запрос ${p.toLocaleString('ru-RU')} · ответ ${c.toLocaleString('ru-RU')} ${tokenWord(c)}`;
+  } else {
+    return null;
+  }
+  return <div className="token-badge">{text}</div>;
+}
+
 export default function ChatInterface({
   conversation,
   onSendMessage,
@@ -214,6 +241,7 @@ export default function ChatInterface({
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
                   </div>
+                  <TokenBadge tokens={msg.tokens} />
                 </div>
               ) : mode === 'dialogue' || mode === 'staff' ? (
                 <div className="assistant-message">
@@ -231,6 +259,7 @@ export default function ChatInterface({
                       </div>
                     </div>
                   )}
+                  {msg.content && <TokenBadge tokens={msg.tokens} />}
                   {msg.status === 'error' && !msg.content && !msg.streamingReply && (
                     <div className="dialogue-error">
                       Ответ не получен. Отправьте сообщение ещё раз.

@@ -10,6 +10,7 @@ from pathlib import Path
 from config import DATA_DIR
 from council.common import MODE_DIALOGUE, MODE_STAFF
 import staff
+import tokens as tokens_mod
 
 # Сентинелл «поле не передано» — чтобы отличать от явного None
 UNSET = object()
@@ -250,7 +251,9 @@ def add_user_message(conversation_id: str, content: str):
 
         conversation["messages"].append({
             "role": "user",
-            "content": content
+            "content": content,
+            # Токены самого сообщения пользователя (tiktoken)
+            "tokens": tokens_mod.count_tokens(content),
         })
 
         save_conversation(conversation)
@@ -306,7 +309,7 @@ def add_pending_assistant_message(conversation_id: str) -> int:
         return len(conversation["messages"]) - 1
 
 # Поля, разрешённые для частичного обновления сообщения ассистента
-_UPDATABLE_FIELDS = ("status", "content", "stage1", "stage2", "stage3", "metadata")
+_UPDATABLE_FIELDS = ("status", "content", "stage1", "stage2", "stage3", "metadata", "tokens")
 
 def update_assistant_message(conversation_id: str, index: int, fields: Dict[str, Any]):
     """
@@ -345,7 +348,8 @@ def add_assistant_message(
     stage2: Optional[List[Dict[str, Any]]] = None,
     stage3: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
-    content: Optional[str] = None
+    content: Optional[str] = None,
+    tokens: Optional[Dict[str, int]] = None,
 ):
     """
     Добавление сообщения ассистента в разговор.
@@ -371,6 +375,8 @@ def add_assistant_message(
             "role": "assistant",
             "status": "complete",
         }
+        if tokens is not None:
+            message["tokens"] = tokens
         if content is not None:
             # Режим 'dialogue': простой текст вместо этапов совета
             message["content"] = content

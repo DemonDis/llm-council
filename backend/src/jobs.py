@@ -33,6 +33,12 @@ from council import (
 
 logger = logging.getLogger(__name__)
 
+def _sum_usage(total: dict, item_tokens):
+    """Прибавляет расход токенов элемента к общему счётчику."""
+    if isinstance(item_tokens, dict):
+        total["prompt"] += item_tokens.get("prompt") or 0
+        total["completion"] += item_tokens.get("completion") or 0
+
 # Сколько держать завершённую задачу в памяти (для поздних подписчиков)
 JOB_TTL_SECONDS = 3600
 
@@ -174,6 +180,7 @@ async def _run_dialogue_generation(job, content, profile_id, history, api_key, a
 
     accumulated = ""
     model_name = None
+    usage_total = {"prompt": 0, "completion": 0}
     async for event in dialogue_reply_stream(
         profile_id, content, history=history,
         api_key=api_key, api_url=api_url
@@ -183,12 +190,13 @@ async def _run_dialogue_generation(job, content, profile_id, history, api_key, a
             await _publish(job, {"type": "reply_chunk", "content": event["content"]})
         elif event["type"] == "done":
             model_name = event["model"]
+            _sum_usage(usage_total, event.get("tokens"))
 
     # Сообщение диалога — простой текст вместо трёх этапов совета
-    _save_partial(job, {"content": accumulated, "status": "complete"})
+    _save_partial(job, {"content": accumulated, "status": "complete", "tokens": usage_total})
     await _publish(job, {
         "type": "reply_complete",
-        "data": {"model": model_name, "response": accumulated},
+        "data": {"model": model_name, "response": accumulated, "tokens": usage_total},
     })
 
 
@@ -202,6 +210,7 @@ async def _run_staff_generation(job, content, profile_ids, history, api_key, api
 
     accumulated = ""
     model_name = None
+    usage_total = {"prompt": 0, "completion": 0}
     async for event in team_reply_stream(
         profile_ids, content, history=history,
         api_key=api_key, api_url=api_url
@@ -211,12 +220,13 @@ async def _run_staff_generation(job, content, profile_ids, history, api_key, api
             await _publish(job, {"type": "reply_chunk", "content": event["content"]})
         elif event["type"] == "done":
             model_name = event["model"]
+            _sum_usage(usage_total, event.get("tokens"))
 
     # Сообщение штаба — единый текст, как в диалоге: без этапов совета
-    _save_partial(job, {"content": accumulated, "status": "complete"})
+    _save_partial(job, {"content": accumulated, "status": "complete", "tokens": usage_total})
     await _publish(job, {
         "type": "reply_complete",
-        "data": {"model": model_name, "response": accumulated},
+        "data": {"model": model_name, "response": accumulated, "tokens": usage_total},
     })
 
 
@@ -253,11 +263,14 @@ async def _run_council_generation(job, content, mode, api_key, api_url):
                     "content": chunk["content"],
                 })
             elif chunk["type"] == "done":
-                stage1_results.append({
+                entry = {
                     "model": chunk["model"],
                     "role": chunk["role"],
                     "response": chunk["response"],
-                })
+                }
+                if chunk.get("tokens"):
+                    entry["tokens"] = chunk["tokens"]
+                stage1_results.append(entry)
     else:
         stage1_results = await stage1_collect_responses(
             content, mode, api_key=api_key, api_url=api_url
@@ -294,12 +307,15 @@ async def _run_council_generation(job, content, mode, api_key, api_url):
                     "content": chunk["content"],
                 })
             elif chunk["type"] == "done":
-                stage2_results.append({
+                entry = {
                     "model": chunk["model"],
                     "role": chunk["role"],
                     "ranking": chunk["ranking"],
                     "parsed_ranking": chunk["parsed_ranking"],
-                })
+                }
+                if chunk.get("tokens"):
+                    entry["tokens"] = chunk["tokens"]
+                stage2_results.append(entry)
         label_to_model = build_label_to_model(stage1_results)
     else:
         stage2_results, label_to_model = await stage2_collect_rankings(
@@ -335,15 +351,23 @@ async def _run_council_generation(job, content, mode, api_key, api_url):
                     "model": chunk["model"],
                     "response": chunk["response"],
                 }
+                if chunk.get("tokens"):
+                    stage3_result["tokens"] = chunk["tokens"]
     else:
         stage3_result = await stage3_synthesize_final(
             content, stage1_results, stage2_results, mode,
             api_key=api_key, api_url=api_url
         )
 
+    # Итоговый расход токенов по всем вызовам трёх этапов
+    usage_total = {"prompt": 0, "completion": 0}
+    for entry in stage1_results + stage2_results:
+        _sum_usage(usage_total, entry.get("tokens"))
+    _sum_usage(usage_total, (stage3_result or {}).get("tokens"))
+
     # Этап 3 завершён — сообщение полностью готово
-    _save_partial(job, {"stage3": stage3_result, "status": "complete"})
-    await _publish(job, {"type": "stage3_complete", "data": stage3_result})
+    _save_partial(job, {"stage3": stage3_result, "status": "complete", "tokens": usage_total})
+    await _publish(job, {"type": "stage3_complete", "data": {**(stage3_result or {}), "tokens": usage_total}})
 
 
 async def _run_job(job: Job, content: str, mode: str, api_key, api_url, profile_id=None, history=None, profile_ids=None):

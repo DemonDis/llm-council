@@ -32,9 +32,13 @@ LLM Council — это трёхэтапная система обсуждени�
 - `COUNCIL_ROLES` (роли для ролевого режима) загружается из `backend/person/role/roles.json` через `load_council_roles()`; ключи, начинающиеся с `_`, игнорируются (заметки); при отсутствии/пустом файле — встроенные `DEFAULT_COUNCIL_ROLES`
 - Бэкенд работает на **порту 8001** (НЕ 8000 — у пользователя другое приложение на 8000)
 
+**`src/tokens.py`**
+- Подсчёт токенов через tiktoken (o200k_base, ленивая загрузка; сбой → грубая оценка по символам, генерацию не ломает): `count_tokens(text)`, `count_messages_tokens(messages)` (+4 токена на сообщение), `usage(prompt, completion)`
+
 **`src/openrouter.py`**
-- `query_model(model, messages, timeout, api_key=None, api_url=None)`: одиночный асинхронный запрос к модели; переданные `api_key`/`api_url` переопределяют значения из `.env`
+- `query_model(model, messages, timeout, api_key=None, api_url=None)`: одиночный асинхронный запрос к модели; переданные `api_key`/`api_url` переопределяют значения из `.env`; возвращает также `usage` = `{'prompt','completion'}` (оценка tiktoken)
 - `query_models_parallel(models, messages, api_key=None, api_url=None)`: параллельные запросы через `asyncio.gather()`
+- `query_model_stream(..., stats=None)`: заполняет переданный словарь `stats` оценкой расхода токенов по завершении стрима
 - `DEFAULT_OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"` — используется, если URL не задан ни в `.env`, ни в запросе
 - Возвращает словарь с ключами 'content' и опциональным 'reasoning_details'
 - Изящная деградация: возвращает None при сбое и продолжает работу с успешными ответами
@@ -58,6 +62,7 @@ LLM Council — это трёхэтапная система обсуждени�
 - `mode` — режим разговора (`ensemble`/`roleplay`), задаётся при создании; `list_conversations(mode=...)` фильтрует по нему; для старых файлов без `mode` режим определяется по содержимому (`infer_conversation_mode()`: наличие `role` в stage1 → roleplay) и сохраняется обратно при первом чтении
 - `device_id`/`device_ip` — с какого устройства/компьютера создан разговор: `device_id` (UUID браузера) проставляется фронтендом при создании, `device_ip` (адрес клиента) берётся бэкендом из запроса; `set_device_info()` заполняет их у старых разговоров при первом сообщении с нового фронтенда
 - `delete_conversation()`: удаление файла разговора
+- У сообщений пользователя хранится `tokens` (число токенов текста), у ассистента — `tokens` = `{'prompt','completion'}` (суммарно по всем вызовам ответа; у старых сообщений поля нет — UI скрывает бейдж)
 - Сообщения ассистента содержат: `{role, status, stage1, stage2, stage3, metadata}`; `status`: `pending` (генерация идёт) / `complete` / `error`; у старых сообщений поле может отсутствовать (= complete)
 - В режиме `dialogue` поля этапов в хранилище НЕ создаются вовсе (даже как `null`): сообщение ассистента — только `{role, status, content}`. В режиме `staff` заглушка содержит только `{role, status, stage1, metadata}`; `add_assistant_message()` пишет лишь реально переданные поля
 - Разговоры штаба хранят `profile_ids` (валидные id) и `profile_names` (id → имя, резолвится бэкендом при создании)
@@ -67,6 +72,7 @@ LLM Council — это трёхэтапная система обсуждени�
 **`src/jobs.py`** — менеджер фоновых задач генерации
 
 - Генерация отвязана от HTTP: `start_job(conversation_id, message_index, ...)` запускает `asyncio.Task`, который выполняет этапы, публикует события подписчикам и ПОЭТАПНО сохраняет результаты (после каждого этапа — `update_assistant_message`)
+- Расход токенов агрегируется в jobs (`_sum_usage`) и сохраняется в поле `tokens` сообщения ассистента после завершения
 - Диспетчеризация по режиму: `_run_dialogue_generation()` (события `reply_start`/`reply_chunk`/`reply_complete`, сохранение простого `content`), `_run_staff_generation()` (параллельные ответы участников, сохранение только `stage1`+`metadata`; метаданные передаются в событии `stage1_complete`) и `_run_council_generation()` (три этапа совета)
 - Отключение клиента не останавливает задачу: SSE-ответ — лишь подписка на события задачи
 - `Job`: буфер всех событий + список очередей живых подписчиков; `stream_job_events(job)` — асинхронный генератор SSE (сначала снимок буфера, затем живые события); подписка/публикация атомарны относительно друг друга
