@@ -234,6 +234,19 @@ html[data-theme='dark'] .staff-toggle-all:hover {
   text-align: left;
 }
 
+/* Markdown внутри пузырей: без двойных отступов и с компактными абзацами */
+.assistant-bubble .markdown-content {
+  padding: 0;
+}
+
+.assistant-bubble .markdown-content > * {
+  margin-bottom: 6px;
+}
+
+.assistant-bubble .markdown-content > :last-child {
+  margin-bottom: 0;
+}
+
 .dialogue-error {
   font-size: 13px;
   color: var(--error-text);

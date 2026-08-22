@@ -237,9 +237,7 @@ export default function ChatInterface({
                 <div className="user-message">
                   <div className="message-label">Вы</div>
                   <div className="message-content">
-                    <div className="markdown-content">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
-                    </div>
+                    {msg.content}
                   </div>
                   <TokenBadge tokens={msg.tokens} />
                 </div>
