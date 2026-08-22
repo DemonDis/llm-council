@@ -6,7 +6,7 @@ data_confidence: stylized_historical
 last_updated: "2026-08-22"
 profile_type: historical_simulation
 historical_basis: "Мао Цзэдун"
-fictional_position: "Заместитель руководителя департамента"
+fictional_position: "Заместитель"
 ---
 
 # Профиль руководителя: Заместитель руководителя

@@ -3,6 +3,7 @@ import uuid
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Request
 import storage
+import staff
 from config import OPENROUTER_API_KEY, OPENROUTER_API_URL, COUNCIL_ROLES
 from schemas import CreateConversationRequest, Conversation, ConversationMetadata
 from utils import get_client_ip
@@ -18,6 +19,18 @@ async def get_config():
         "api_url": OPENROUTER_API_URL or "",
         "roles": list(COUNCIL_ROLES.keys()),
     }
+
+@router.get("/api/staff")
+async def list_staff(group: str):
+    """
+    Имена профилей одной группы из backend/person/staff/.
+
+    group='personnel' — сотрудники (страница «Командный штаб»),
+    group='leaders' — руководители (страница «Диалог с руководителем»).
+    """
+    if group not in staff.GROUPS:
+        raise HTTPException(status_code=400, detail="Unknown staff group")
+    return staff.load_staff_profiles(group)
 
 @router.get("/api/conversations", response_model=List[ConversationMetadata])
 async def list_conversations(request: Request, mode: Optional[str] = None):

@@ -55,6 +55,20 @@ export const api = {
   },
 
   /**
+   * Имена профилей одной группы: [{ id, name, status }, ...].
+   * @param {string} group - 'personnel' (Командный штаб) | 'leaders' (Диалог с руководителем)
+   */
+  async getStaff(group) {
+    const response = await fetch(
+      `${API_BASE}/api/staff?group=${encodeURIComponent(group)}`
+    );
+    if (!response.ok) {
+      throw new Error('Failed to get staff');
+    }
+    return response.json();
+  },
+
+  /**
    * Create a new conversation.
    * @param {object} device - Optional { device_id, mode } of the current browser
    */

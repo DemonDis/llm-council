@@ -6,7 +6,7 @@ data_confidence: stylized_historical
 last_updated: "2026-08-22"
 profile_type: historical_simulation
 historical_basis: "Франсиско Франко"
-fictional_position: "Бывший заместитель руководителя"
+fictional_position: "Рукодитель кадров"
 ---
 
 # Профиль руководителя: Бывший заместитель

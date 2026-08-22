@@ -6,7 +6,7 @@ data_confidence: stylized_historical
 last_updated: "2026-08-22"
 profile_type: historical_simulation
 historical_basis: "Иосиф Сталин"
-fictional_position: "Руководитель департамента"
+fictional_position: "Руководитель"
 ---
 
 # Профиль руководителя: Руководитель департамента

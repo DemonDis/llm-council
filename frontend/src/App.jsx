@@ -265,7 +265,29 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
 
 // Страница-заглушка нереализованного режима: тот же каркас с сайдбаром,
 // но без разговоров, пока режим не поддержан на бэкенде.
-function StubPage({ modeStub, onOpenSettings }) {
+// При переходе на страницу запрашивается список имён нужной группы
+// ('personnel' — Командный штаб, 'leaders' — Диалог с руководителем).
+function StubPage({ modeStub, group, onOpenSettings }) {
+  const [loaded, setLoaded] = useState(null); // { group, profiles }
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .getStaff(group)
+      .then((profiles) => {
+        if (!cancelled) setLoaded({ group, profiles });
+      })
+      .catch((error) => {
+        console.error('Failed to load staff:', error);
+        if (!cancelled) setLoaded({ group, profiles: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [group]);
+
+  const current = loaded && loaded.group === group ? loaded : null;
+
   return (
     <div className="app">
       <Sidebar
@@ -276,7 +298,26 @@ function StubPage({ modeStub, onOpenSettings }) {
         onDeleteConversation={() => {}}
         onOpenSettings={onOpenSettings}
       />
-      <ModeStub {...modeStub} />
+      <ModeStub {...modeStub}>
+        {!current ? (
+          <p>Загружаем профили…</p>
+        ) : current.profiles === null ? (
+          <p>Не удалось загрузить список профилей</p>
+        ) : (
+          <ul className="profile-list">
+            {current.profiles.map((profile) => (
+              <li
+                key={profile.id}
+                className={`profile-item${
+                  profile.status !== 'active' ? ' inactive' : ''
+                }`}
+              >
+                {profile.name}
+              </li>
+            ))}
+          </ul>
+        )}
+      </ModeStub>
     </div>
   );
 }
@@ -340,6 +381,7 @@ export default function App() {
           element={
             <StubPage
               onOpenSettings={openSettings}
+              group="personnel"
               modeStub={{
                 icon: '🎖️',
                 title: 'Командный штаб',
@@ -354,6 +396,7 @@ export default function App() {
           element={
             <StubPage
               onOpenSettings={openSettings}
+              group="leaders"
               modeStub={{
                 icon: '👔',
                 title: 'Диалог с руководителем',
