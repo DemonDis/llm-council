@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 from config import DATA_DIR
+from council.common import MODE_DIALOGUE
 
 # Сентинелл «поле не передано» — чтобы отличать от явного None
 UNSET = object()
@@ -260,15 +261,25 @@ def add_pending_assistant_message(conversation_id: str) -> int:
         if conversation is None:
             raise ValueError(f"Conversation {conversation_id} not found")
 
-        conversation["messages"].append({
-            "role": "assistant",
-            "status": "pending",
-            "content": None,
-            "stage1": None,
-            "stage2": None,
-            "stage3": None,
-            "metadata": None,
-        })
+        # В режиме 'dialogue' этапы совета не используются — не храним их
+        # даже как null, чтобы JSON сообщений оставался чистым.
+        if conversation.get("mode") == MODE_DIALOGUE:
+            stub = {
+                "role": "assistant",
+                "status": "pending",
+                "content": None,
+            }
+        else:
+            stub = {
+                "role": "assistant",
+                "status": "pending",
+                "content": None,
+                "stage1": None,
+                "stage2": None,
+                "stage3": None,
+                "metadata": None,
+            }
+        conversation["messages"].append(stub)
 
         save_conversation(conversation)
         return len(conversation["messages"]) - 1
@@ -309,9 +320,9 @@ def update_assistant_message(conversation_id: str, index: int, fields: Dict[str,
 
 def add_assistant_message(
     conversation_id: str,
-    stage1: List[Dict[str, Any]],
-    stage2: List[Dict[str, Any]],
-    stage3: Dict[str, Any],
+    stage1: Optional[List[Dict[str, Any]]] = None,
+    stage2: Optional[List[Dict[str, Any]]] = None,
+    stage3: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
     content: Optional[str] = None
 ):
@@ -319,7 +330,8 @@ def add_assistant_message(
     Добавление сообщения ассистента в разговор.
 
     Для режима совета передаются все 3 этапа; для режима 'dialogue'
-    вместо этапов передаётся только content (простой текст ответа).
+    вместо этапов передаётся только content — поля этапов вообще не
+    попадают в хранилище.
 
     Args:
         conversation_id: Идентификатор разговора
@@ -334,15 +346,20 @@ def add_assistant_message(
         if conversation is None:
             raise ValueError(f"Conversation {conversation_id} not found")
 
-        conversation["messages"].append({
+        message = {
             "role": "assistant",
             "status": "complete",
             "content": content,
-            "stage1": stage1,
-            "stage2": stage2,
-            "stage3": stage3,
-            "metadata": metadata,
-        })
+        }
+        if content is None or stage1 is not None:
+            # Полноценное сообщение совета (или явная запись пустых этапов)
+            message.update({
+                "stage1": stage1,
+                "stage2": stage2,
+                "stage3": stage3,
+                "metadata": metadata,
+            })
+        conversation["messages"].append(message)
 
         save_conversation(conversation)
 

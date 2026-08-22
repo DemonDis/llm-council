@@ -7,11 +7,15 @@
     python backend/check_dialogue.py <conversation_id>
 """
 
+import os
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(ROOT / "src"))
+BACKEND_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(BACKEND_DIR))
+sys.path.insert(0, str(BACKEND_DIR / "src"))
+# Хранилище всегда в backend/data независимо от текущего каталога запуска
+os.environ.setdefault("DATA_DIR", str(BACKEND_DIR / "data" / "conversations"))
 
 import staff  # noqa: E402
 from storage import get_conversation  # noqa: E402

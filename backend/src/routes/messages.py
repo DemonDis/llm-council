@@ -69,20 +69,22 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
     metadata = {"mode": request.mode}
 
     if request.mode == MODE_DIALOGUE:
-        stage1_results = []
-        stage2_results = []
-        stage3_result = await dialogue_reply(
+        reply = await dialogue_reply(
             conversation["profile_id"],
             request.content,
             history=history,
             api_key=request.api_key,
             api_url=request.api_url
         )
-        stage3_result = {
-            "model": stage3_result["model"],
-            "response": stage3_result["response"],
+        stage1_results = None
+        stage2_results = None
+        stage3_result = None
+        metadata = None
+        content = reply["response"]
+        response_payload = {
+            "model": reply["model"],
+            "content": content,
         }
-        content = stage3_result["response"]
     else:
         stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
             request.content,
@@ -91,6 +93,12 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
             request.api_url
         )
         content = None
+        response_payload = {
+            "stage1": stage1_results,
+            "stage2": stage2_results,
+            "stage3": stage3_result,
+            "metadata": metadata
+        }
 
     storage.add_assistant_message(
         conversation_id,
@@ -101,12 +109,7 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
         content=content
     )
 
-    return {
-        "stage1": stage1_results,
-        "stage2": stage2_results,
-        "stage3": stage3_result,
-        "metadata": metadata
-    }
+    return response_payload
 
 @router.post("/api/conversations/{conversation_id}/message/stream")
 async def send_message_stream(conversation_id: str, request: SendMessageRequest, http_request: Request):
