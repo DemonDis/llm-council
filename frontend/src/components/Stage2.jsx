@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
+import Markdown from './Markdown';
 import '../styles/Stage2.css';
 
 function shortName(name) {
@@ -46,7 +46,7 @@ function RankingViewer({ name, content, placeholder, streamingLabel }) {
         {streamingLabel && <span className="streaming-indicator"> {streamingLabel}</span>}
       </div>
       <div className="ranking-content markdown-content">
-        <ReactMarkdown>{content || placeholder}</ReactMarkdown>
+        <Markdown>{content || placeholder}</Markdown>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
+import Markdown from './Markdown';
 import { Stage1, Stage2, Stage3 } from './index';
 import '../styles/ChatInterface.css';
 
@@ -251,9 +251,9 @@ export default function ChatInterface({
                   {(msg.content || msg.streamingReply) && (
                     <div className="assistant-bubble">
                       <div className="markdown-content">
-                        <ReactMarkdown>
+                        <Markdown>
                           {msg.content ?? msg.streamingReply}
-                        </ReactMarkdown>
+                        </Markdown>
                       </div>
                     </div>
                   )}

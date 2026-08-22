@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
+import Markdown from './Markdown';
 import '../styles/Stage1.css';
 
 function getDisplayName(resp) {
@@ -33,7 +33,7 @@ function TabContent({ name, detail, response, placeholder }) {
         {detail && <span className="model-detail"> — {detail}</span>}
       </div>
       <div className="response-text markdown-content">
-        <ReactMarkdown>{response || placeholder}</ReactMarkdown>
+        <Markdown>{response || placeholder}</Markdown>
       </div>
     </div>
   );

@@ -204,3 +204,24 @@ body {
   border-left: 4px solid var(--border-strong);
   color: var(--blockquote-text);
 }
+
+.markdown-content table {
+  border-collapse: collapse;
+  margin: 0 0 12px 0;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--border-strong);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdown-content th {
+  background: var(--bg-subtle);
+  font-weight: 600;
+}

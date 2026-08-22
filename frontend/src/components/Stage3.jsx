@@ -1,4 +1,4 @@
-import ReactMarkdown from 'react-markdown';
+import Markdown from './Markdown';
 import '../styles/Stage3.css';
 
 function shortName(model) {
@@ -13,7 +13,7 @@ function ResponseCard({ model, children, streamingLabel }) {
         {streamingLabel && <span className="streaming-indicator"> {streamingLabel}</span>}
       </div>
       <div className="final-text markdown-content">
-        <ReactMarkdown>{children}</ReactMarkdown>
+        <Markdown>{children}</Markdown>
       </div>
     </div>
   );
