@@ -266,7 +266,6 @@ def add_pending_assistant_message(conversation_id: str) -> int:
         save_conversation(conversation)
         return len(conversation["messages"]) - 1
 
-
 # Поля, разрешённые для частичного обновления сообщения ассистента
 _UPDATABLE_FIELDS = ("status", "stage1", "stage2", "stage3", "metadata")
 
