@@ -3,11 +3,10 @@ import { api } from '../utils';
 import '../styles/ChatInterface.css';
 
 // Экран выбора руководителя перед началом диалога.
-// onStart(leader) получает выбранного: { id, name, ... }.
+// Клик по чипу сразу начинает диалог: onStart(leader) → { id, name, ... }.
 export default function LeaderPicker({ onStart }) {
   const [leaders, setLeaders] = useState(null);
   const [failed, setFailed] = useState(false);
-  const [selectedId, setSelectedId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,8 +24,6 @@ export default function LeaderPicker({ onStart }) {
     };
   }, []);
 
-  const selected = (leaders || []).find((l) => l.id === selectedId);
-
   return (
     <div className="chat-interface">
       <div className="empty-state">
@@ -39,36 +36,27 @@ export default function LeaderPicker({ onStart }) {
         ) : !leaders ? (
           <p>Загружаем список…</p>
         ) : (
-          <>
-            <ul className="leader-list">
-              {leaders.map((leader) => (
-                <li key={leader.id}>
-                  <button
-                    type="button"
-                    className={`leader-chip${
-                      leader.id === selectedId ? ' selected' : ''
-                    }${leader.status !== 'active' ? ' inactive' : ''}`}
-                    onClick={() => setSelectedId(leader.id)}
-                    disabled={leader.status !== 'active'}
-                    title={
-                      leader.status !== 'active'
-                        ? 'Профиль неактивен'
-                        : undefined
-                    }
-                  >
-                    {leader.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <button
-              className="send-button start-dialog-btn"
-              disabled={!selected}
-              onClick={() => selected && onStart(selected)}
-            >
-              Начать диалог{selected ? `: ${selected.name}` : ''}
-            </button>
-          </>
+          <ul className="leader-list">
+            {leaders.map((leader) => (
+              <li key={leader.id}>
+                <button
+                  type="button"
+                  className={`leader-chip${
+                    leader.status !== 'active' ? ' inactive' : ''
+                  }`}
+                  onClick={() => onStart(leader)}
+                  disabled={leader.status !== 'active'}
+                  title={
+                    leader.status !== 'active'
+                      ? 'Профиль неактивен'
+                      : undefined
+                  }
+                >
+                  {leader.name}
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </div>

@@ -211,10 +211,22 @@ export function isStreaming(conversationId) {
 /**
  * Убрать оверлей (вызывается после того, как свежие данные загружены
  * из хранилища и дубликаты больше не нужны).
+ *
+ * ВАЖНО: запись сбрасывается в idle, но НЕ удаляется — вместе с записью
+ * удалился бы Set подписчиков, и компоненты, подписанные через subscribe(),
+ * перестали бы получать события следующего стрима этого разговора
+ * (симптом: второе сообщение «не стримится», а по завершении дублируется
+ * предыдущий обмен).
  */
 export function clear(conversationId) {
   if (isStreaming(conversationId)) return; // активный стрим не трогаем
-  streams.delete(conversationId);
+  const st = streams.get(conversationId);
+  if (!st) return;
+  st.status = 'idle';
+  st.userContent = null;
+  st.draft = null;
+  notify(conversationId); // подписчики получают null — оверлей снят
+  if (st.listeners.size === 0) streams.delete(conversationId);
 }
 
 /**

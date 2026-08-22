@@ -154,6 +154,17 @@ export default function ChatInterface({
 
   return (
     <div className="chat-interface">
+      {mode === 'dialogue' && (
+        <div className="dialogue-header">
+          <span className="dialogue-header-avatar">👔</span>
+          <span className="dialogue-header-name">
+            {conversation.profile_name || 'Руководитель'}
+          </span>
+          {isLoading && (
+            <span className="dialogue-header-status">печатает…</span>
+          )}
+        </div>
+      )}
       <div className="messages-container">
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
@@ -183,10 +194,6 @@ export default function ChatInterface({
                 </div>
               ) : mode === 'dialogue' ? (
                 <div className="assistant-message">
-                  <div className="message-label">
-                    {conversation.profile_name || 'Руководитель'}
-                  </div>
-
                   {msg.loading?.reply && !msg.streamingReply && !msg.content && (
                     <StageLoading text="Руководитель обдумывает ответ…" />
                   )}

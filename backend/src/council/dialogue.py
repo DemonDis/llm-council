@@ -55,6 +55,10 @@ async def dialogue_reply(
         raise ValueError(f"Profile not found: {profile_id}")
 
     messages = build_dialogue_messages(profile, history or [], user_query)
+    print(
+        f"DIALOGUE [sync]: profile={profile_id} ({profile['name']}), "
+        f"model={DIRECTOR_MODEL}, system_prompt={len(messages[0]['content'])} chars"
+    )
     response = await query_model(
         DIRECTOR_MODEL, messages, timeout=240.0, api_key=api_key, api_url=api_url
     )
@@ -85,6 +89,10 @@ async def dialogue_reply_stream(
         raise ValueError(f"Profile not found: {profile_id}")
 
     messages = build_dialogue_messages(profile, history or [], user_query)
+    print(
+        f"DIALOGUE [stream]: profile={profile_id} ({profile['name']}), "
+        f"model={DIRECTOR_MODEL}, system_prompt={len(messages[0]['content'])} chars"
+    )
 
     yield {"type": "start", "model": DIRECTOR_MODEL}
 

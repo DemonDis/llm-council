@@ -100,19 +100,34 @@
   color: #2f6db8;
 }
 
-.leader-chip.selected {
-  background: #4a90e2;
-  border-color: #4a90e2;
-  color: #fff;
-}
-
 .leader-chip:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-.start-dialog-btn {
-  margin-top: 18px;
+/* Шапка диалога: с кем общаемся */
+.dialogue-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  border-bottom: 1px solid #e8eaed;
+  background: #fff;
+}
+
+.dialogue-header-avatar {
+  font-size: 20px;
+}
+
+.dialogue-header-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.dialogue-header-status {
+  font-size: 13px;
+  color: #8a94a0;
 }
 
 /* Ответ руководителя в режиме диалога */
