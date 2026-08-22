@@ -209,7 +209,11 @@ export default function ChatInterface({
           </div>
         </div>
       )}
-      <div className="messages-container">
+      <div
+        className={`messages-container${
+          mode === 'dialogue' || mode === 'staff' ? ' messages-container--messenger' : ''
+        }`}
+      >
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">

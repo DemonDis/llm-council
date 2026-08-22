@@ -12,6 +12,19 @@
   padding: 32px 24px 16px;
 }
 
+/* Мессенджер-лейаут (диалог и штаб): свои сообщения справа, ответы слева */
+.messages-container--messenger .user-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.messages-container--messenger .assistant-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
