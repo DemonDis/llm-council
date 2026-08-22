@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { Sidebar, ChatInterface, PlannerStub, Settings, ConfirmDialog } from './components';
+import { Sidebar, ChatInterface, ModeStub, Settings, ConfirmDialog } from './components';
 import { api, councilStream } from './utils';
 import './styles/App.css';
 
@@ -263,9 +263,9 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
   );
 }
 
-// Страница-заглушка «Планировщик»: тот же каркас с сайдбаром,
-// но без разговоров, пока режим не реализован на бэкенде.
-function PlannerPage({ onOpenSettings }) {
+// Страница-заглушка нереализованного режима: тот же каркас с сайдбаром,
+// но без разговоров, пока режим не поддержан на бэкенде.
+function StubPage({ modeStub, onOpenSettings }) {
   return (
     <div className="app">
       <Sidebar
@@ -276,7 +276,7 @@ function PlannerPage({ onOpenSettings }) {
         onDeleteConversation={() => {}}
         onOpenSettings={onOpenSettings}
       />
-      <PlannerStub />
+      <ModeStub {...modeStub} />
     </div>
   );
 }
@@ -334,8 +334,35 @@ export default function App() {
             />
           }
         />
-        {/* Заглушка: режим пока не реализован на бэкенде */}
-        <Route path="/planner" element={<PlannerPage onOpenSettings={openSettings} />} />
+        {/* Заглушки: режимы пока не реализованы на бэкенде */}
+        <Route
+          path="/staff"
+          element={
+            <StubPage
+              onOpenSettings={openSettings}
+              modeStub={{
+                icon: '🎖️',
+                title: 'Командный штаб',
+                description:
+                  'Страница в разработке. Здесь команда специалистов (аналитик, стратег, логист и другие офицеры штаба) будет совместно вырабатывать план действий по вашей задаче.',
+              }}
+            />
+          }
+        />
+        <Route
+          path="/dialogue"
+          element={
+            <StubPage
+              onOpenSettings={openSettings}
+              modeStub={{
+                icon: '👔',
+                title: 'Диалог с руководителем',
+                description:
+                  'Страница в разработке. Здесь можно будет напрямую обсудить вопрос с цифровым руководителем, который помнит весь ход вашей беседы.',
+              }}
+            />
+          }
+        />
         {/* Ролевой режим — основной сценарий, открывается по умолчанию */}
         <Route path="*" element={<Navigate to="/roleplay" replace />} />
       </Routes>
