@@ -157,9 +157,17 @@ export default function ChatInterface({
       <div className="messages-container">
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">💬</div>
-            <h2>Начните разговор</h2>
-            <p>Задайте вопрос, чтобы посоветоваться с LLM Council</p>
+            <div className="empty-state-icon">{mode === 'dialogue' ? '👔' : '💬'}</div>
+            <h2>
+              {mode === 'dialogue'
+                ? conversation.profile_name || 'Руководитель'
+                : 'Начните разговор'}
+            </h2>
+            <p>
+              {mode === 'dialogue'
+                ? 'Напишите первое сообщение, чтобы начать диалог'
+                : 'Задайте вопрос, чтобы посоветоваться с LLM Council'}
+            </p>
           </div>
         ) : (
           conversation.messages.map((msg, index) => (
@@ -172,6 +180,30 @@ export default function ChatInterface({
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
                   </div>
+                </div>
+              ) : mode === 'dialogue' ? (
+                <div className="assistant-message">
+                  <div className="message-label">
+                    {conversation.profile_name || 'Руководитель'}
+                  </div>
+
+                  {msg.loading?.reply && !msg.streamingReply && !msg.content && (
+                    <StageLoading text="Руководитель обдумывает ответ…" />
+                  )}
+                  {(msg.content || msg.streamingReply) && (
+                    <div className="assistant-bubble">
+                      <div className="markdown-content">
+                        <ReactMarkdown>
+                          {msg.content ?? msg.streamingReply}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+                  {msg.status === 'error' && !msg.content && !msg.streamingReply && (
+                    <div className="dialogue-error">
+                      Ответ не получен. Отправьте сообщение ещё раз.
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="assistant-message">
@@ -230,7 +262,11 @@ export default function ChatInterface({
         {isLoading && (
           <div className="loading-indicator">
             <div className="spinner" />
-            <span>Совет размышляет...</span>
+            <span>
+              {mode === 'dialogue'
+                ? 'Руководитель размышляет…'
+                : 'Совет размышляет...'}
+            </span>
           </div>
         )}
 
@@ -248,7 +284,11 @@ export default function ChatInterface({
           <textarea
             className="message-input"
             style={{ height: inputHeight }}
-            placeholder="Задайте вопрос... (Shift+Enter — новая строка)"
+            placeholder={
+              mode === 'dialogue'
+                ? 'Напишите руководителю... (Shift+Enter — новая строка)'
+                : 'Задайте вопрос... (Shift+Enter — новая строка)'
+            }
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}

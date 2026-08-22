@@ -88,3 +88,43 @@ def load_staff_profiles(group: str) -> list:
         })
 
     return profiles
+
+
+def load_staff_profile(group: str, profile_id: str):
+    """
+    Полный профиль по id (frontmatter 'id' или имя файла без .md).
+
+    Возвращает {'id', 'name', 'status', 'historical_basis', 'body'} или None,
+    если профиль не найден. body — Markdown-тело без frontmatter.
+    """
+    if group not in GROUPS:
+        raise ValueError(f"Unknown staff group: {group}")
+
+    for path in sorted((STAFF_DIR / group).glob("*.md")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as e:
+            print(f"Ошибка чтения профиля {path}: {e}")
+            continue
+
+        meta, body = _parse_frontmatter(text)
+        file_id = meta.get("id") or path.stem
+        if file_id != profile_id:
+            continue
+
+        h1 = _H1_RE.search(body)
+        name = (
+            meta.get("name")
+            or meta.get("fictional_position")
+            or (h1.group(1) if h1 else None)
+            or path.stem
+        )
+        return {
+            "id": file_id,
+            "name": name.strip(),
+            "status": meta.get("profile_status", "active"),
+            "historical_basis": meta.get("historical_basis"),
+            "body": body.strip(),
+        }
+
+    return None

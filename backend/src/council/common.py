@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 # Режимы работы совета
 MODE_ENSEMBLE = "ensemble"    # Битва моделей: один вопрос разным моделям
 MODE_ROLEPLAY = "roleplay"    # Ролевой мозговой штурм: роли в одной модели
+MODE_DIALOGUE = "dialogue"    # Диалог с руководителем: чат 1-на-1 по его профилю
 
 # Роли для режима "Ролевой мозговой штурм"
 # Загружаются из backend/roles.json (см. load_council_roles в config.py).

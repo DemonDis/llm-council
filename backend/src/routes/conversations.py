@@ -55,7 +55,9 @@ async def create_conversation(request: CreateConversationRequest, http_request: 
         conversation_id,
         device_id=request.device_id,
         device_ip=get_client_ip(http_request),
-        mode=request.mode
+        mode=request.mode,
+        profile_id=request.profile_id,
+        profile_name=request.profile_name
     )
     return conversation
 

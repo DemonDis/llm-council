@@ -1,6 +1,7 @@
 export { default as Sidebar } from './Sidebar';
 export { default as ChatInterface } from './ChatInterface';
 export { default as ModeStub } from './ModeStub';
+export { default as LeaderPicker } from './LeaderPicker';
 export { default as Settings } from './Settings';
 export { default as ConfirmDialog } from './ConfirmDialog';
 export { default as Stage1 } from './Stage1';

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { Sidebar, ChatInterface, ModeStub, Settings, ConfirmDialog } from './components';
+import { Sidebar, ChatInterface, ModeStub, LeaderPicker, Settings, ConfirmDialog } from './components';
 import { api, councilStream } from './utils';
 import './styles/App.css';
 
@@ -71,7 +71,7 @@ function buildDisplayConversation(base, overlay) {
   return { ...base, messages: [...messages, ...extra] };
 }
 
-function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
+function CouncilPage({ mode, deviceId, settings, onOpenSettings, setup }) {
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
@@ -151,7 +151,14 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
     }
   };
 
+  // Обычные режимы: кнопка сразу создаёт разговор.
+  // Режимы с выбором участника (setup): возвращает к экрану выбора.
   const handleNewConversation = async () => {
+    if (setup) {
+      setCurrentConversationId(null);
+      setCurrentConversation(null);
+      return;
+    }
     try {
       const newConv = await api.createConversation({
         device_id: deviceId,
@@ -170,6 +177,32 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
       setCurrentConversationId(newConv.id);
     } catch (error) {
       console.error('Failed to create conversation:', error);
+    }
+  };
+
+  // Диалог с выбранным руководителем: создаём разговор с его профилем
+  const handleStartWithProfile = async (leader) => {
+    if (!setup) return;
+    try {
+      const newConv = await api.createConversation({
+        device_id: deviceId,
+        mode,
+        profile_id: leader.id,
+        profile_name: leader.name,
+      });
+      setConversations((prev) => [
+        {
+          id: newConv.id,
+          created_at: newConv.created_at,
+          mode: newConv.mode,
+          message_count: 0,
+          device_id: deviceId,
+        },
+        ...prev.filter((c) => c.id !== newConv.id),
+      ]);
+      setCurrentConversationId(newConv.id);
+    } catch (error) {
+      console.error('Failed to create dialogue conversation:', error);
     }
   };
 
@@ -230,6 +263,7 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
     () => buildDisplayConversation(currentConversation, streamOverlay),
     [currentConversation, streamOverlay]
   );
+  const showSetup = !!setup && !currentConversationId;
 
   return (
     <div className="app">
@@ -237,16 +271,20 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings }) {
         conversations={conversations}
         currentConversationId={currentConversationId}
         onSelectConversation={handleSelectConversation}
-        onNewConversation={handleNewConversation}
+        onNewConversation={showSetup ? null : handleNewConversation}
         onDeleteConversation={setDeleteTarget}
         onOpenSettings={onOpenSettings}
       />
-      <ChatInterface
-        conversation={displayConversation}
-        onSendMessage={handleSendMessage}
-        isLoading={isStreamingCurrent}
-        mode={mode}
-      />
+      {setup && currentConversationId === null ? (
+        <setup.Screen onStart={(leader) => handleStartWithProfile(leader)} />
+      ) : (
+        <ChatInterface
+          conversation={displayConversation}
+          onSendMessage={handleSendMessage}
+          isLoading={isStreamingCurrent}
+          mode={mode}
+        />
+      )}
       {deleteTarget && (
         <ConfirmDialog
           title="Удалить этот разговор?"
@@ -375,7 +413,21 @@ export default function App() {
             />
           }
         />
-        {/* Заглушки: режимы пока не реализованы на бэкенде */}
+        {/* Диалог с руководителем: сначала выбор участника, затем чат с ним */}
+        <Route
+          path="/dialogue"
+          element={
+            <CouncilPage
+              key="dialogue"
+              mode="dialogue"
+              deviceId={deviceId}
+              settings={settings}
+              onOpenSettings={openSettings}
+              setup={{ Screen: LeaderPicker }}
+            />
+          }
+        />
+        {/* Заглушка: режим пока не реализован на бэкенде */}
         <Route
           path="/staff"
           element={
@@ -387,21 +439,6 @@ export default function App() {
                 title: 'Командный штаб',
                 description:
                   'Страница в разработке. Здесь команда специалистов (аналитик, стратег, логист и другие офицеры штаба) будет совместно вырабатывать план действий по вашей задаче.',
-              }}
-            />
-          }
-        />
-        <Route
-          path="/dialogue"
-          element={
-            <StubPage
-              onOpenSettings={openSettings}
-              group="leaders"
-              modeStub={{
-                icon: '👔',
-                title: 'Диалог с руководителем',
-                description:
-                  'Страница в разработке. Здесь можно будет напрямую обсудить вопрос с цифровым руководителем, который помнит весь ход вашей беседы.',
               }}
             />
           }

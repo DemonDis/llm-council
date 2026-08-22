@@ -23,7 +23,9 @@ from council import (
     stage2_collect_rankings_stream,
     stage3_synthesize_final_stream,
     build_label_to_model,
+    dialogue_reply_stream,
     MODE_ROLEPLAY,
+    MODE_DIALOGUE,
 )
 
 logger = logging.getLogger(__name__)
@@ -135,12 +137,16 @@ def start_job(
     mode: str,
     api_key=None,
     api_url=None,
+    profile_id: str | None = None,
+    history: list | None = None,
 ) -> Job:
     """
-    Запускает фоновую генерацию ответа совета.
+    Запускает фоновую генерацию ответа.
 
     Пользовательское сообщение и заглушка ассистента ('pending') должны быть
     добавлены в хранилище ДО вызова — здесь только запуск задачи.
+
+    Для режима 'dialogue' передаются profile_id руководителя и история беседы.
     """
     _prune_expired()
 
@@ -152,13 +158,163 @@ def start_job(
     job = Job(key, conversation_id, message_index)
     _jobs[key] = job
     job.task = asyncio.create_task(
-        _run_job(job, content, mode, api_key, api_url)
+        _run_job(job, content, mode, api_key, api_url, profile_id, history or [])
     )
     return job
 
 
-async def _run_job(job: Job, content: str, mode: str, api_key, api_url):
-    """Сам пайплайн: три этапа + заголовок, с публикацией событий и поэтапным сохранением."""
+async def _run_dialogue_generation(job, content, profile_id, history, api_key, api_url):
+    """Ветка 'dialogue': один стрим-ответ руководителя по его профилю."""
+    await _publish(job, {"type": "reply_start"})
+
+    accumulated = ""
+    model_name = None
+    async for event in dialogue_reply_stream(
+        profile_id, content, history=history,
+        api_key=api_key, api_url=api_url
+    ):
+        if event["type"] == "chunk":
+            accumulated += event["content"]
+            await _publish(job, {"type": "reply_chunk", "content": event["content"]})
+        elif event["type"] == "done":
+            model_name = event["model"]
+
+    # Сообщение диалога — простой текст вместо трёх этапов совета
+    _save_partial(job, {"content": accumulated, "status": "complete"})
+    await _publish(job, {
+        "type": "reply_complete",
+        "data": {"model": model_name, "response": accumulated},
+    })
+
+
+async def _run_council_generation(job, content, mode, api_key, api_url):
+    """Ветка совета ('ensemble'/'roleplay'): три этапа с поэтапным сохранением."""
+    # Этап 1: сбор ответов
+    if mode == MODE_ROLEPLAY:
+        from config import COUNCIL_ROLES
+        await _publish(job, {"type": "stage1_start", "roles_total": len(COUNCIL_ROLES)})
+    else:
+        await _publish(job, {"type": "stage1_start"})
+
+    if mode == MODE_ROLEPLAY:
+        stage1_results = []
+        async for chunk in stage1_collect_roleplay_stream(
+            content, api_key=api_key, api_url=api_url
+        ):
+            if chunk["type"] == "start":
+                await _publish(job, {
+                    "type": "stage1_role_start",
+                    "index": chunk["index"],
+                    "role": chunk["role"],
+                })
+            elif chunk["type"] == "active":
+                await _publish(job, {
+                    "type": "stage1_role_active",
+                    "index": chunk["index"],
+                    "role": chunk["role"],
+                })
+            elif chunk["type"] == "chunk":
+                await _publish(job, {
+                    "type": "stage1_chunk",
+                    "index": chunk["index"],
+                    "content": chunk["content"],
+                })
+            elif chunk["type"] == "done":
+                stage1_results.append({
+                    "model": chunk["model"],
+                    "role": chunk["role"],
+                    "response": chunk["response"],
+                })
+    else:
+        stage1_results = await stage1_collect_responses(
+            content, mode, api_key=api_key, api_url=api_url
+        )
+
+    # Этап 1 завершён — сразу сохраняем
+    _save_partial(job, {"stage1": stage1_results})
+    await _publish(job, {"type": "stage1_complete", "data": stage1_results})
+
+    # Этап 2: сбор рейтингов
+    await _publish(job, {"type": "stage2_start"})
+
+    if mode == MODE_ROLEPLAY:
+        stage2_results = []
+        async for chunk in stage2_collect_rankings_stream(
+            content, stage1_results, api_key=api_key, api_url=api_url
+        ):
+            if chunk["type"] == "start":
+                await _publish(job, {
+                    "type": "stage2_role_start",
+                    "index": chunk["index"],
+                    "role": chunk["role"],
+                })
+            elif chunk["type"] == "active":
+                await _publish(job, {
+                    "type": "stage2_role_active",
+                    "index": chunk["index"],
+                    "role": chunk["role"],
+                })
+            elif chunk["type"] == "chunk":
+                await _publish(job, {
+                    "type": "stage2_chunk",
+                    "index": chunk["index"],
+                    "content": chunk["content"],
+                })
+            elif chunk["type"] == "done":
+                stage2_results.append({
+                    "model": chunk["model"],
+                    "role": chunk["role"],
+                    "ranking": chunk["ranking"],
+                    "parsed_ranking": chunk["parsed_ranking"],
+                })
+        label_to_model = build_label_to_model(stage1_results)
+    else:
+        stage2_results, label_to_model = await stage2_collect_rankings(
+            content, stage1_results, mode, api_key=api_key, api_url=api_url
+        )
+
+    aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
+    metadata = {
+        "mode": mode,
+        "label_to_model": label_to_model,
+        "aggregate_rankings": aggregate_rankings,
+    }
+
+    # Этап 2 завершён — сразу сохраняем вместе с метаданными
+    _save_partial(job, {"stage2": stage2_results, "metadata": metadata})
+    await _publish(job, {"type": "stage2_complete", "data": stage2_results, "metadata": metadata})
+
+    # Этап 3: синтез итогового ответа
+    await _publish(job, {"type": "stage3_start"})
+
+    if mode == MODE_ROLEPLAY:
+        stage3_result = None
+        async for chunk in stage3_synthesize_final_stream(
+            content, stage1_results, stage2_results, mode,
+            api_key=api_key, api_url=api_url
+        ):
+            if chunk["type"] == "start":
+                await _publish(job, {"type": "stage3_role_start", "model": chunk["model"]})
+            elif chunk["type"] == "chunk":
+                await _publish(job, {"type": "stage3_chunk", "content": chunk["content"]})
+            elif chunk["type"] == "done":
+                stage3_result = {
+                    "model": chunk["model"],
+                    "response": chunk["response"],
+                }
+    else:
+        stage3_result = await stage3_synthesize_final(
+            content, stage1_results, stage2_results, mode,
+            api_key=api_key, api_url=api_url
+        )
+
+    # Этап 3 завершён — сообщение полностью готово
+    _save_partial(job, {"stage3": stage3_result, "status": "complete"})
+    await _publish(job, {"type": "stage3_complete", "data": stage3_result})
+
+
+async def _run_job(job: Job, content: str, mode: str, api_key, api_url, profile_id=None, history=None):
+    """Пайплайн одного сообщения: ветка режима + заголовок, публикация событий."""
     conversation_id = job.conversation_id
     index = job.message_index
 
@@ -173,128 +329,12 @@ async def _run_job(job: Job, content: str, mode: str, api_key, api_url):
                 )
             )
 
-        # Этап 1: сбор ответов
-        if mode == MODE_ROLEPLAY:
-            from config import COUNCIL_ROLES
-            await _publish(job, {"type": "stage1_start", "roles_total": len(COUNCIL_ROLES)})
-        else:
-            await _publish(job, {"type": "stage1_start"})
-
-        if mode == MODE_ROLEPLAY:
-            stage1_results = []
-            async for chunk in stage1_collect_roleplay_stream(
-                content, api_key=api_key, api_url=api_url
-            ):
-                if chunk["type"] == "start":
-                    await _publish(job, {
-                        "type": "stage1_role_start",
-                        "index": chunk["index"],
-                        "role": chunk["role"],
-                    })
-                elif chunk["type"] == "active":
-                    await _publish(job, {
-                        "type": "stage1_role_active",
-                        "index": chunk["index"],
-                        "role": chunk["role"],
-                    })
-                elif chunk["type"] == "chunk":
-                    await _publish(job, {
-                        "type": "stage1_chunk",
-                        "index": chunk["index"],
-                        "content": chunk["content"],
-                    })
-                elif chunk["type"] == "done":
-                    stage1_results.append({
-                        "model": chunk["model"],
-                        "role": chunk["role"],
-                        "response": chunk["response"],
-                    })
-        else:
-            stage1_results = await stage1_collect_responses(
-                content, mode, api_key=api_key, api_url=api_url
+        if mode == MODE_DIALOGUE:
+            await _run_dialogue_generation(
+                job, content, profile_id, history, api_key, api_url
             )
-
-        # Этап 1 завершён — сразу сохраняем
-        _save_partial(job, {"stage1": stage1_results})
-        await _publish(job, {"type": "stage1_complete", "data": stage1_results})
-
-        # Этап 2: сбор рейтингов
-        await _publish(job, {"type": "stage2_start"})
-
-        if mode == MODE_ROLEPLAY:
-            stage2_results = []
-            async for chunk in stage2_collect_rankings_stream(
-                content, stage1_results, api_key=api_key, api_url=api_url
-            ):
-                if chunk["type"] == "start":
-                    await _publish(job, {
-                        "type": "stage2_role_start",
-                        "index": chunk["index"],
-                        "role": chunk["role"],
-                    })
-                elif chunk["type"] == "active":
-                    await _publish(job, {
-                        "type": "stage2_role_active",
-                        "index": chunk["index"],
-                        "role": chunk["role"],
-                    })
-                elif chunk["type"] == "chunk":
-                    await _publish(job, {
-                        "type": "stage2_chunk",
-                        "index": chunk["index"],
-                        "content": chunk["content"],
-                    })
-                elif chunk["type"] == "done":
-                    stage2_results.append({
-                        "model": chunk["model"],
-                        "role": chunk["role"],
-                        "ranking": chunk["ranking"],
-                        "parsed_ranking": chunk["parsed_ranking"],
-                    })
-            label_to_model = build_label_to_model(stage1_results)
         else:
-            stage2_results, label_to_model = await stage2_collect_rankings(
-                content, stage1_results, mode, api_key=api_key, api_url=api_url
-            )
-
-        aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
-        metadata = {
-            "mode": mode,
-            "label_to_model": label_to_model,
-            "aggregate_rankings": aggregate_rankings,
-        }
-
-        # Этап 2 завершён — сразу сохраняем вместе с метаданными
-        _save_partial(job, {"stage2": stage2_results, "metadata": metadata})
-        await _publish(job, {"type": "stage2_complete", "data": stage2_results, "metadata": metadata})
-
-        # Этап 3: синтез итогового ответа
-        await _publish(job, {"type": "stage3_start"})
-
-        if mode == MODE_ROLEPLAY:
-            stage3_result = None
-            async for chunk in stage3_synthesize_final_stream(
-                content, stage1_results, stage2_results, mode,
-                api_key=api_key, api_url=api_url
-            ):
-                if chunk["type"] == "start":
-                    await _publish(job, {"type": "stage3_role_start", "model": chunk["model"]})
-                elif chunk["type"] == "chunk":
-                    await _publish(job, {"type": "stage3_chunk", "content": chunk["content"]})
-                elif chunk["type"] == "done":
-                    stage3_result = {
-                        "model": chunk["model"],
-                        "response": chunk["response"],
-                    }
-        else:
-            stage3_result = await stage3_synthesize_final(
-                content, stage1_results, stage2_results, mode,
-                api_key=api_key, api_url=api_url
-            )
-
-        # Этап 3 завершён — сообщение полностью готово
-        _save_partial(job, {"stage3": stage3_result, "status": "complete"})
-        await _publish(job, {"type": "stage3_complete", "data": stage3_result})
+            await _run_council_generation(job, content, mode, api_key, api_url)
 
         # Дожидаемся генерации заголовка, если она была запущена
         if title_task:
@@ -363,6 +403,14 @@ def synthesize_events_from_message(message: dict, fallback_mode: str = "ensemble
     Клиент мгновенно получает текущее состояние без повторной генерации.
     """
     events = []
+
+    # Сообщение режима 'dialogue' — простой текст вместо этапов совета
+    if message.get("content") and not message.get("stage1"):
+        events.append({"type": "reply_start"})
+        events.append({
+            "type": "reply_complete",
+            "data": {"model": None, "response": message["content"]},
+        })
 
     stage1 = message.get("stage1")
     if stage1:

@@ -31,6 +31,10 @@ CHAIRMAN_MODEL = os.getenv("CHAIRMAN_MODEL")
 # Модель для ролевого режима — отвечает от лица всех ролей совета
 ROLEPLAY_MODEL = os.getenv("ROLEPLAY_MODEL")
 
+# Модель цифрового руководителя в режиме «Диалог с руководителем»
+# (по умолчанию — модель ролевого режима)
+DIRECTOR_MODEL = os.getenv("DIRECTOR_MODEL") or ROLEPLAY_MODEL
+
 # Модель для генерации заголовков разговоров (по умолчанию — модель председателя)
 TITLE_MODEL = os.getenv("TITLE_MODEL") or CHAIRMAN_MODEL or "gemini-3-pro"
 

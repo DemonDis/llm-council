@@ -12,11 +12,27 @@ from council import (
     run_full_council,
     generate_conversation_title,
     calculate_aggregate_rankings,
+    MODE_DIALOGUE,
+    dialogue_reply,
 )
 from schemas import SendMessageRequest
 from utils import get_client_ip
 
 router = APIRouter()
+
+
+def _dialogue_history(conversation: dict) -> list:
+    """
+    История беседы для режима 'dialogue': предыдущие сообщения пользователя
+    и ответы ассистента (у ассистентов режима совета поля content нет).
+    """
+    return [
+        {"role": m["role"], "content": m["content"]}
+        for m in conversation.get("messages", [])
+        if m.get("role") in ("user", "assistant")
+        and isinstance(m.get("content"), str)
+        and m["content"]
+    ]
 
 @router.post("/api/conversations/{conversation_id}/message")
 async def send_message(conversation_id: str, request: SendMessageRequest, http_request: Request):
@@ -29,6 +45,8 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     is_first_message = len(conversation["messages"]) == 0
+    # История для режима 'dialogue' — до добавления нового сообщения пользователя
+    history = _dialogue_history(conversation)
 
     # Отмечаем устройство для разговоров без информации о нём
     if request.device_id:
@@ -48,19 +66,39 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
         )
         storage.update_conversation_title(conversation_id, title)
 
-    stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
-        request.content,
-        request.mode,
-        request.api_key,
-        request.api_url
-    )
+    metadata = {"mode": request.mode}
+
+    if request.mode == MODE_DIALOGUE:
+        stage1_results = []
+        stage2_results = []
+        stage3_result = await dialogue_reply(
+            conversation["profile_id"],
+            request.content,
+            history=history,
+            api_key=request.api_key,
+            api_url=request.api_url
+        )
+        stage3_result = {
+            "model": stage3_result["model"],
+            "response": stage3_result["response"],
+        }
+        content = stage3_result["response"]
+    else:
+        stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
+            request.content,
+            request.mode,
+            request.api_key,
+            request.api_url
+        )
+        content = None
 
     storage.add_assistant_message(
         conversation_id,
         stage1_results,
         stage2_results,
         stage3_result,
-        metadata=metadata
+        metadata=metadata,
+        content=content
     )
 
     return {
@@ -93,6 +131,12 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
             get_client_ip(http_request)
         )
 
+    if conversation["mode"] == MODE_DIALOGUE and not conversation.get("profile_id"):
+        raise HTTPException(status_code=400, detail="Dialogue conversation has no leader profile")
+
+    # История беседы для режима 'dialogue' — до добавления нового сообщения
+    history = _dialogue_history(conversation)
+
     # Сохраняем сообщение пользователя и заглушку ассистента синхронно:
     # они видны сразу после любого отключения/перезагрузки страницы
     try:
@@ -108,6 +152,8 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
         request.mode,
         api_key=request.api_key,
         api_url=request.api_url,
+        profile_id=conversation.get("profile_id"),
+        history=history,
     )
 
     return _sse_response(jobs.stream_job_events(job))

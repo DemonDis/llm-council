@@ -38,7 +38,9 @@ def create_conversation(
     conversation_id: str,
     device_id: Optional[str] = None,
     device_ip: Optional[str] = None,
-    mode: str = "ensemble"
+    mode: str = "ensemble",
+    profile_id: Optional[str] = None,
+    profile_name: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Создание нового разговора.
@@ -47,7 +49,9 @@ def create_conversation(
         conversation_id: Уникальный идентификатор разговора
         device_id: Идентификатор устройства/браузера, создавшего разговор
         device_ip: IP-адрес устройства, создавшего разговор
-        mode: Режим совета ('ensemble' или 'roleplay')
+        mode: Режим совета ('ensemble', 'roleplay' или 'dialogue')
+        profile_id: Режим 'dialogue': id профиля руководителя (person/staff/leaders)
+        profile_name: Режим 'dialogue': имя руководителя для отображения
 
     Returns:
         Словарь нового разговора
@@ -62,6 +66,8 @@ def create_conversation(
             "mode": mode,
             "device_id": device_id,
             "device_ip": device_ip,
+            "profile_id": profile_id if mode == "dialogue" else None,
+            "profile_name": profile_name if mode == "dialogue" else None,
             "messages": []
         }
 
@@ -257,6 +263,7 @@ def add_pending_assistant_message(conversation_id: str) -> int:
         conversation["messages"].append({
             "role": "assistant",
             "status": "pending",
+            "content": None,
             "stage1": None,
             "stage2": None,
             "stage3": None,
@@ -267,7 +274,7 @@ def add_pending_assistant_message(conversation_id: str) -> int:
         return len(conversation["messages"]) - 1
 
 # Поля, разрешённые для частичного обновления сообщения ассистента
-_UPDATABLE_FIELDS = ("status", "stage1", "stage2", "stage3", "metadata")
+_UPDATABLE_FIELDS = ("status", "content", "stage1", "stage2", "stage3", "metadata")
 
 def update_assistant_message(conversation_id: str, index: int, fields: Dict[str, Any]):
     """
@@ -305,10 +312,14 @@ def add_assistant_message(
     stage1: List[Dict[str, Any]],
     stage2: List[Dict[str, Any]],
     stage3: Dict[str, Any],
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
+    content: Optional[str] = None
 ):
     """
-    Добавление сообщения ассистента со всеми 3 этапами в разговор.
+    Добавление сообщения ассистента в разговор.
+
+    Для режима совета передаются все 3 этапа; для режима 'dialogue'
+    вместо этапов передаётся только content (простой текст ответа).
 
     Args:
         conversation_id: Идентификатор разговора
@@ -316,6 +327,7 @@ def add_assistant_message(
         stage2: Список рейтингов моделей
         stage3: Итоговый синтезированный ответ
         metadata: Метаданные (label_to_model, aggregate_rankings, mode)
+        content: Режим 'dialogue': полный текст ответа руководителя
     """
     with _get_lock(conversation_id):
         conversation = get_conversation(conversation_id)
@@ -325,6 +337,7 @@ def add_assistant_message(
         conversation["messages"].append({
             "role": "assistant",
             "status": "complete",
+            "content": content,
             "stage1": stage1,
             "stage2": stage2,
             "stage3": stage3,

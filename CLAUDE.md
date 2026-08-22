@@ -10,9 +10,9 @@ LLM Council — это трёхэтапная система обсуждени�
 - **`ensemble` — «Битва моделей»** (`/ensemble`): один вопрос отправляется разным моделям из `COUNCIL_MODELS`.
 - **`roleplay` — «Ролевой мозговой штурм»** (`/roleplay`, страница по умолчанию): вопрос отправляется ролям из `backend/person/role/roles.json` (например, цифровым личностям коллег и персонажам вроде Рика Санчеса) в одной модели (`ROLEPLAY_MODEL`). Каждая роль получает свой системный промпт.
 
-Ещё две страницы — **заглушки** (общий компонент `ModeStub.jsx`, каркас `StubPage` в `App.jsx`), без взаимодействия с моделью; чат для них не реализован, но список участников уже подгружается с бэкенда (`GET /api/staff`, параметр `group`):
-- **«Командный штаб»** (`/staff`, группа `personnel`): команда офицеров будет совместно вырабатывать план действий по задаче; участники — профили из `backend/person/staff/personnel/*.md`.
-- **«Диалог с руководителем»** (`/dialogue`, группа `leaders`): личный разговор с цифровым руководителем с памятью беседы; участники — профили из `backend/person/staff/leaders/*.md`.
+Ещё две страницы:
+- **«Командный штаб»** (`/staff`, группа `personnel`) — **заглушка** (`ModeStub.jsx`, каркас `StubPage` в `App.jsx`): список сотрудников подгружается с бэкенда, чат не реализован.
+- **«Диалог с руководителем»** (`/dialogue`, режим `dialogue`) — **реализован**: экран `LeaderPicker` (выбор руководителя из `GET /api/staff?group=leaders` → кнопка «Начать диалог») → разговор привязывается к профилю (`profile_id`/`profile_name` в разговоре), ответ — один стрим-запрос к `DIRECTOR_MODEL` с системным промптом из полного текста профиля и всей историей беседы. События стрима: `reply_start` / `reply_chunk` / `reply_complete`; сообщение ассистента хранится как простой `content` без этапов. Кнопка «Новый разговор» возвращает к выбору руководителя.
 
 У каждой страницы свой список разговоров: режим сохраняется в разговоре при создании (`mode`) и фильтруется на бэкенде.
 
@@ -25,6 +25,7 @@ LLM Council — это трёхэтапная система обсуждени�
 **`src/config.py`**
 - Содержит `COUNCIL_MODELS` (список идентификаторов моделей OpenRouter)
 - Содержит `CHAIRMAN_MODEL` (модель, которая синтезирует итоговый ответ) и `ROLEPLAY_MODEL` (модель для ролевого режима)
+- Содержит `DIRECTOR_MODEL` (модель цифрового руководителя в режиме `dialogue`; по умолчанию = `ROLEPLAY_MODEL`)
 - Содержит `TITLE_MODEL` (модель для генерации заголовков разговоров; по умолчанию = `CHAIRMAN_MODEL`)
 - Читает переменные окружения из `backend/.env`: `OPENROUTER_API_KEY`, `OPENROUTER_API_URL`, `COUNCIL_MODELS`, `CHAIRMAN_MODEL`, `ROLEPLAY_MODEL`, `TITLE_MODEL`, `DATA_DIR`, `COUNCIL_ROLES_FILE`
 - `COUNCIL_ROLES` (роли для ролевого режима) загружается из `backend/person/role/roles.json` через `load_council_roles()`; ключи, начинающиеся с `_`, игнорируются (заметки); при отсутствии/пустом файле — встроенные `DEFAULT_COUNCIL_ROLES`
@@ -44,6 +45,7 @@ LLM Council — это трёхэтапная система обсуждени�
 - **`stage1.py`**: сбор ответов. `stage1_collect_responses(user_query, mode, ...)` диспетчеризует по режиму: `stage1_collect_ensemble()` (параллельные запросы ко всем моделям) или `stage1_collect_roleplay()` / `stage1_collect_roleplay_stream()` (запросы к `ROLEPLAY_MODEL`, каждая роль со своим системным промптом; стрим отдаёт события start/active/chunk/done)
 - **`stage2.py`**: `stage2_collect_rankings(user_query, stage1_results, mode, ...)` и `..._stream()`. Анонимизация через метки, строгий формат рейтинга ("FINAL RANKING:"); возвращает (рейтинги с `parsed_ranking`, `label_to_model`)
 - **`stage3.py`**: `stage3_synthesize_final(...)` и `..._stream()` — председатель синтезирует итог из ответов и рейтингов
+- **`dialogue.py`**: режим «Диалог с руководителем» — `dialogue_reply()` / `dialogue_reply_stream()`: один запрос к `DIRECTOR_MODEL`, системный промпт = полный текст профиля из `person/staff/leaders/`, далее история беседы (`build_dialogue_messages()`)
 - **`pipeline.py`**: `run_full_council(user_query, mode, api_key=None, api_url=None)` — полный трёхэтапный процесс + агрегация; `generate_conversation_title(user_query, ...)` — короткий заголовок через `TITLE_MODEL` (таймаут 30 c)
 - `COUNCIL_ROLES` импортируется из `.config` (определён в `backend/person/role/roles.json` / `DEFAULT_COUNCIL_ROLES`)
 
@@ -57,14 +59,15 @@ LLM Council — это трёхэтапная система обсуждени�
 - Метаданные (label_to_model, aggregate_rankings, mode) СОХРАНЯЮТСЯ в сообщении ассистента — нужны для восстановления состояния после перезагрузки страницы
 - Все мутации атомарны: per-conversation `threading.RLock` + запись через temp-file и `os.replace` (не бывает битого JSON при параллельной записи)
 - `add_pending_assistant_message(id)` → индекс заглушки ассистента (`status: pending`) до запуска генерации; `update_assistant_message(id, index, fields)` — частичное обновление (поэтапное сохранение результатов фоновой задачей)
-
 **`src/jobs.py`** — менеджер фоновых задач генерации
-- Генерация отвязана от HTTP: `start_job(conversation_id, message_index, ...)` запускает `asyncio.Task`, который выполняет три этапа, публикует события подписчикам и ПОЭТАПНО сохраняет результаты (после каждого этапа — `update_assistant_message`)
+
+- Генерация отвязана от HTTP: `start_job(conversation_id, message_index, ...)` запускает `asyncio.Task`, который выполняет этапы, публикует события подписчикам и ПОЭТАПНО сохраняет результаты (после каждого этапа — `update_assistant_message`)
+- Диспетчеризация по режиму: `_run_dialogue_generation()` (события `reply_start`/`reply_chunk`/`reply_complete`, сохранение простого `content`) и `_run_council_generation()` (три этапа совета)
 - Отключение клиента не останавливает задачу: SSE-ответ — лишь подписка на события задачи
 - `Job`: буфер всех событий + список очередей живых подписчиков; `stream_job_events(job)` — асинхронный генератор SSE (сначала снимок буфера, затем живые события); подписка/публикация атомарны относительно друг друга
 - Задачи ищутся по ключу `conversation_id:message_index`; завершённые держатся в памяти 1 час (`JOB_TTL_SECONDS`), потом вытесняются
 - Требуется ОДИН воркер uvicorn (по умолчанию): задачи живут в памяти процесса
-- `synthesize_events_from_message(message)` — восстановление событий из сохранённого сообщения, когда задача уже недоступна (перезапуск сервера); для потерянной `pending` отдаёт событие error
+- `synthesize_events_from_message(message)` — восстановление событий из сохранённого сообщения, когда задача уже недоступна (перезапуск сервера); для потерянной `pending` отдаёт событие error; сообщения с `content` без `stage1` воспроизводятся как события диалога
 
 **`src/schemas.py`**
 - Pydantic-модели запросов/ответов: `CreateConversationRequest`, `SendMessageRequest`, `ConversationMetadata`, `Conversation`
@@ -87,7 +90,7 @@ LLM Council — это трёхэтапная система обсуждени�
 
 **`src/routes/messages.py`** — роутер сообщений
 - `POST /api/conversations/{id}/message` — синхронный вариант без стрима
-- `POST /api/conversations/{id}/message/stream` — принимает `SendMessageRequest`: `content`, `mode` (по умолчанию `ensemble`), `api_key`, `api_url`, `device_id`. Синхронно сохраняет user-сообщение и заглушку ассистента (`pending`), запускает фоновую задачу (jobs.py), стрим = подписка на её события
+- `POST /api/conversations/{id}/message/stream` — принимает `SendMessageRequest`: `content`, `mode` (по умолчанию `ensemble`), `api_key`, `api_url`, `device_id`. Синхронно сохраняет user-сообщение и заглушку ассистента (`pending`), запускает фоновую задачу (jobs.py), стрим = подписка на её события. Для `dialogue` дополнительно передаёт в задачу `profile_id` разговора и историю беседы
 - `GET /api/conversations/{id}/messages/{index}/events` — переподключение к генерации сообщения: живой буфер задачи или мгновенный replay из хранилища. Используется после перезагрузки страницы, если последнее сообщение ещё `pending`
 - Метаданные (возвращаются с сообщением и сохраняются) включают: режим, сопоставление label_to_model и агрегированные рейтинги
 

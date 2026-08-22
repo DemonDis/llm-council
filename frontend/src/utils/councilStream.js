@@ -23,10 +23,12 @@ function createDraft(fromStored = null) {
   return {
     role: 'assistant',
     status: fromStored?.status || 'pending',
+    content: fromStored?.content || null,
     stage1: fromStored?.stage1 || null,
     stage2: fromStored?.stage2 || null,
     stage3: fromStored?.stage3 || null,
     metadata: fromStored?.metadata || null,
+    streamingReply: null,
     streamingSlots: {},
     streamingSlotsStage2: {},
     streamingStage3: null,
@@ -34,6 +36,7 @@ function createDraft(fromStored = null) {
     activeRoleIndex: -1,
     activeRoleIndexStage2: -1,
     loading: {
+      reply: false,
       stage1: false,
       stage2: false,
       stage3: false,
@@ -55,6 +58,20 @@ function applyEvent(prev, eventType, event) {
   };
 
   switch (eventType) {
+    case 'reply_start':
+      m.loading.reply = true;
+      break;
+
+    case 'reply_chunk':
+      m.streamingReply = (m.streamingReply || '') + event.content;
+      break;
+
+    case 'reply_complete':
+      m.content = event.data?.response ?? m.streamingReply;
+      m.streamingReply = null;
+      m.loading.reply = false;
+      break;
+
     case 'stage1_start':
       m.loading.stage1 = true;
       m.rolesTotal = event.roles_total || m.rolesTotal;
@@ -140,7 +157,7 @@ function applyEvent(prev, eventType, event) {
 
 /** Остановить индикаторы загрузки (при ошибке стрима частичные данные остаются). */
 function stopLoading(m) {
-  m.loading = { stage1: false, stage2: false, stage3: false };
+  m.loading = { reply: false, stage1: false, stage2: false, stage3: false };
   m.activeRoleIndex = -1;
   m.activeRoleIndexStage2 = -1;
   return m;
