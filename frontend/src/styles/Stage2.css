@@ -6,7 +6,7 @@
 
 .stage-description {
   margin: 0 0 16px 0;
-  color: #888;
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.55;
 }
@@ -20,18 +20,18 @@
 /* ── Tab content panel ───────────────────────────────── */
 
 .stage2 .tab-content {
-  background: #ffffff;
+  background: var(--bg-elevated);
   padding: 20px;
   border-radius: 6px;
-  border: 1px solid #eaecef;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--border-default);
+  box-shadow: 0 1px 2px var(--card-shadow);
   margin-bottom: 20px;
 }
 
 /* ── Model label above ranking text ──────────────────── */
 
 .stage2 .ranking-model {
-  color: #999;
+  color: var(--text-faint);
   font-size: 12px;
   font-family: monospace;
   margin-bottom: 12px;
@@ -41,7 +41,7 @@
 /* ── Ranking body text ───────────────────────────────── */
 
 .stage2 .ranking-content {
-  color: #333;
+  color: var(--text-primary);
   line-height: 1.65;
   font-size: 14px;
 }
@@ -51,9 +51,9 @@
 .parsed-ranking {
   margin-top: 16px;
   padding: 16px 20px;
-  background: #f8f9fa;
+  background: var(--bg-subtle);
   border-radius: 6px;
-  border: 1px solid #eaecef;
+  border: 1px solid var(--border-default);
 }
 
 .parsed-ranking-label {
@@ -65,10 +65,14 @@
   margin-bottom: 10px;
 }
 
+html[data-theme='dark'] .parsed-ranking-label {
+  color: #7ba7d7;
+}
+
 .parsed-ranking ol {
   margin: 0;
   padding-left: 20px;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .parsed-ranking li {
@@ -81,10 +85,10 @@
 /* ── Aggregate rankings ──────────────────────────────── */
 
 .aggregate-rankings {
-  background: #f0f7ff;
+  background: var(--accent-soft-bg);
   padding: 20px;
   border-radius: 8px;
-  border: 1px solid #d0e7ff;
+  border: 1px solid var(--accent-soft-border);
   margin-top: 20px;
 }
 
@@ -95,11 +99,19 @@
   margin-bottom: 4px;
 }
 
+html[data-theme='dark'] .aggregate-header {
+  color: #8db8e8;
+}
+
 .aggregate-description {
   color: #6b8db5;
   font-size: 13px;
   margin: 0 0 16px 0;
   line-height: 1.5;
+}
+
+html[data-theme='dark'] .aggregate-description {
+  color: #7ba7d7;
 }
 
 .aggregate-list {
@@ -113,9 +125,9 @@
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  background: #ffffff;
+  background: var(--bg-elevated);
   border-radius: 6px;
-  border: 1px solid #d8e8f8;
+  border: 1px solid var(--accent-soft-border);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -123,9 +135,17 @@
   border-color: #b0d4f1;
 }
 
+html[data-theme='dark'] .aggregate-item:hover {
+  border-color: #5599e6;
+}
+
 .aggregate-item--first {
   border-color: #93c5fd;
   box-shadow: 0 1px 4px rgba(42, 122, 226, 0.08);
+}
+
+html[data-theme='dark'] .aggregate-item--first {
+  box-shadow: 0 1px 6px rgba(74, 144, 226, 0.25);
 }
 
 .rank-position {
@@ -136,37 +156,41 @@
   font-variant-numeric: tabular-nums;
 }
 
+html[data-theme='dark'] .rank-position {
+  color: #8db8e8;
+}
+
 .aggregate-item--first .rank-position {
   font-size: 17px;
 }
 
 .rank-model {
   flex: 1;
-  color: #333;
+  color: var(--text-primary);
   font-family: monospace;
   font-size: 13px;
   font-weight: 500;
 }
 
 .rank-score {
-  color: #555;
+  color: var(--text-secondary);
   font-size: 13px;
   font-family: monospace;
   font-variant-numeric: tabular-nums;
 }
 
 .rank-count {
-  color: #aaa;
+  color: var(--text-faint);
   font-size: 12px;
 }
 
 /* ── Streaming indicators ────────────────────────────── */
 
 .stage2 .streaming-indicator {
-  color: #4a90e2;
+  color: var(--accent);
   font-weight: 500;
 }
 
 .stage2 .tab-loading-indicator {
-  color: #4a90e2;
+  color: var(--accent);
 }

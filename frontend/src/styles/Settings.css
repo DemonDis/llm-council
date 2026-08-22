@@ -1,7 +1,7 @@
 .settings-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,9 +13,9 @@
   max-width: 90vw;
   max-height: 90vh;
   overflow-y: auto;
-  background: #fff;
+  background: var(--bg-elevated);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 32px var(--modal-shadow);
   padding: 24px;
 }
 
@@ -29,7 +29,7 @@
 .settings-header h3 {
   margin: 0;
   font-size: 18px;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .settings-close {
@@ -37,13 +37,13 @@
   border: none;
   font-size: 24px;
   line-height: 1;
-  color: #666;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 0 4px;
 }
 
 .settings-close:hover {
-  color: #333;
+  color: var(--text-primary);
 }
 
 .settings-section {
@@ -54,7 +54,7 @@
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #555;
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 
@@ -67,26 +67,27 @@
 .settings-field input {
   flex: 1;
   padding: 10px 12px;
-  border: 1px solid #d0d0d0;
+  background: var(--bg-main);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-size: 14px;
   font-family: inherit;
-  color: #333;
+  color: var(--text-primary);
   outline: none;
   min-width: 0;
 }
 
 .settings-field input:focus {
-  border-color: #4a90e2;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
 }
 
 .settings-btn {
   padding: 10px 14px;
-  background: #f5f5f5;
-  border: 1px solid #d0d0d0;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
-  color: #444;
+  color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
@@ -94,8 +95,8 @@
 }
 
 .settings-btn:hover:not(:disabled) {
-  border-color: #4a90e2;
-  color: #4a90e2;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .settings-btn:disabled {
@@ -107,27 +108,27 @@
   padding: 12px;
   border-radius: 8px;
   font-size: 14px;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .settings-status.ok {
-  background: #f0fff0;
-  border: 1px solid #b5e8b5;
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
 }
 
 .settings-hint {
   margin-top: 6px;
   font-size: 12px;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .settings-env-url {
   flex: 1;
   padding: 10px 12px;
-  border: 1px solid #e0e0e0;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
-  background: #fafafa;
-  color: #333;
+  color: var(--text-primary);
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -143,10 +144,10 @@
 
 .settings-save {
   padding: 10px 24px;
-  background: #4a90e2;
-  border: 1px solid #4a90e2;
+  background: var(--accent);
+  border: 1px solid var(--accent);
   border-radius: 8px;
-  color: #fff;
+  color: var(--accent-text-on);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -154,27 +155,27 @@
 }
 
 .settings-save:hover {
-  background: #357abd;
+  background: var(--accent-active);
 }
 
 .settings-clear {
   padding: 10px 24px;
-  background: #fff;
-  border: 1px solid #e0a0a0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--error-border);
   border-radius: 8px;
-  color: #c0392b;
+  color: var(--danger);
   font-size: 14px;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .settings-clear:hover {
-  background: #fdf3f3;
+  background: var(--danger-hover-bg);
 }
 
 .settings-note {
   margin-top: 16px;
   font-size: 12px;
-  color: #999;
+  color: var(--text-faint);
   line-height: 1.5;
 }

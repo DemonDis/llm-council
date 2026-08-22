@@ -6,7 +6,7 @@
 
 .stage3 .stage-description {
   margin: 0 0 16px 0;
-  color: #888;
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.55;
 }
@@ -14,18 +14,18 @@
 /* ── Final response card ─────────────────────────────── */
 
 .final-response {
-  background: #ffffff;
+  background: var(--bg-elevated);
   padding: 24px;
   border-radius: 6px;
-  border: 1px solid #eaecef;
-  border-left: 3px solid #16a34a;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-default);
+  border-left: 3px solid var(--success-accent);
+  box-shadow: 0 1px 3px var(--card-shadow);
 }
 
 /* ── Chairman label ──────────────────────────────────── */
 
 .chairman-label {
-  color: #16a34a;
+  color: var(--success-accent);
   font-size: 12px;
   font-family: monospace;
   font-weight: 600;
@@ -33,13 +33,13 @@
   letter-spacing: 0.04em;
   margin-bottom: 14px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #eaecef;
+  border-bottom: 1px solid var(--border-default);
 }
 
 /* ── Final text ──────────────────────────────────────── */
 
 .final-text {
-  color: #333;
+  color: var(--text-primary);
   line-height: 1.7;
   font-size: 15px;
 }
@@ -47,6 +47,6 @@
 /* ── Streaming indicator ─────────────────────────────── */
 
 .stage3 .streaming-indicator {
-  color: #4a90e2;
+  color: var(--accent);
   font-weight: 500;
 }

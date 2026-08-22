@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #ffffff;
+  background: var(--bg-main);
 }
 
 .messages-container {
@@ -18,7 +18,7 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #999;
+  color: var(--text-muted);
   text-align: center;
   gap: 8px;
 }
@@ -33,14 +33,14 @@
   margin: 0;
   font-size: 22px;
   font-weight: 600;
-  color: #555;
+  color: var(--text-secondary);
   letter-spacing: -0.01em;
 }
 
 .empty-state p {
   margin: 0;
   font-size: 15px;
-  color: #999;
+  color: var(--text-muted);
 }
 
 /* Имена профилей на страницах-заглушках (/staff, /dialogue) */
@@ -57,12 +57,12 @@
 
 .profile-item {
   padding: 5px 14px;
-  background: #f8f9fb;
-  border: 1px solid #e8eaed;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-default);
   border-radius: 999px;
   font-size: 13.5px;
   font-weight: 500;
-  color: #444;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
@@ -84,20 +84,24 @@
 
 .leader-chip {
   padding: 7px 16px;
-  background: #f8f9fb;
-  border: 1.5px solid #e0e3e8;
+  background: var(--bg-subtle);
+  border: 1.5px solid var(--border-chip);
   border-radius: 999px;
   font-size: 13.5px;
   font-weight: 500;
-  color: #444;
+  color: var(--text-secondary);
   cursor: pointer;
   white-space: nowrap;
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .leader-chip:hover:not(:disabled) {
-  border-color: #4a90e2;
-  color: #2f6db8;
+  border-color: var(--accent);
+  color: var(--accent-active);
+}
+
+html[data-theme='dark'] .leader-chip:hover:not(:disabled) {
+  color: var(--accent-hover);
 }
 
 .leader-chip:disabled {
@@ -107,14 +111,14 @@
 
 /* Мультивыбор участников штаба */
 .leader-chip.selected {
-  background: #4a90e2;
-  border-color: #4a90e2;
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text-on);
 }
 
 .leader-chip.selected:hover:not(:disabled) {
-  border-color: #3a7bc8;
-  color: #fff;
+  border-color: var(--accent-active);
+  color: var(--accent-text-on);
 }
 
 .staff-actions {
@@ -127,22 +131,26 @@
 .staff-toggle-all {
   padding: 5px 14px;
   background: none;
-  border: 1px solid #d0d4da;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-size: 13px;
-  color: #555;
+  color: var(--text-secondary);
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .staff-toggle-all:hover {
-  border-color: #4a90e2;
-  color: #2f6db8;
+  border-color: var(--accent);
+  color: var(--accent-active);
+}
+
+html[data-theme='dark'] .staff-toggle-all:hover {
+  color: var(--accent-hover);
 }
 
 .staff-count {
   font-size: 13px;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .staff-start {
@@ -155,8 +163,8 @@
   align-items: center;
   gap: 10px;
   padding: 12px 24px;
-  border-bottom: 1px solid #e8eaed;
-  background: #fff;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-main);
 }
 
 .dialogue-header-avatar {
@@ -166,19 +174,19 @@
 .dialogue-header-name {
   font-size: 15px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-heading);
 }
 
 .dialogue-header-status {
   font-size: 13px;
-  color: #8a94a0;
+  color: var(--text-muted);
 }
 
 .dialogue-header-meta {
   font-size: 12.5px;
-  color: #a0a6ad;
+  color: var(--text-faint);
   padding: 2px 10px;
-  background: #f4f6f8;
+  background: var(--bg-subtle);
   border-radius: 999px;
 }
 
@@ -198,10 +206,10 @@
 .member-chip {
   font-size: 12px;
   font-weight: 500;
-  color: #555;
+  color: var(--text-secondary);
   padding: 2px 10px;
-  background: #f4f6f8;
-  border: 1px solid #e8eaed;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-default);
   border-radius: 999px;
 }
 
@@ -209,29 +217,29 @@
 .token-badge {
   margin-top: 6px;
   font-size: 11px;
-  color: #a0a6ad;
+  color: var(--text-faint);
   user-select: all;
 }
 
 /* Ответ руководителя в режиме диалога */
 .assistant-bubble {
   display: inline-block;
-  background: #f5f6f8;
-  border: 1px solid #e8eaed;
+  background: var(--assistant-bubble-bg);
+  border: 1px solid var(--assistant-bubble-border);
   border-radius: 4px 12px 12px 12px;
   padding: 12px 16px;
   max-width: 72%;
   line-height: 1.6;
-  color: #333;
+  color: var(--text-primary);
   text-align: left;
 }
 
 .dialogue-error {
   font-size: 13px;
-  color: #c0564f;
+  color: var(--error-text);
   padding: 8px 12px;
-  background: #fdf1f0;
-  border: 1px solid #f3d4d1;
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
   border-radius: 8px;
 }
 
@@ -247,18 +255,18 @@
 .message-label {
   font-size: 11px;
   font-weight: 600;
-  color: #888;
+  color: var(--text-muted);
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
 .user-message .message-content {
-  background: #f0f7ff;
+  background: var(--user-bubble-bg);
   padding: 12px 16px;
   border-radius: 12px 12px 4px 12px;
-  border: 1px solid #dce9f7;
-  color: #333;
+  border: 1px solid var(--user-bubble-border);
+  color: var(--text-primary);
   line-height: 1.6;
   max-width: 72%;
   white-space: pre-wrap;
@@ -270,7 +278,7 @@
   align-items: center;
   gap: 10px;
   padding: 12px 0;
-  color: #888;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
@@ -280,10 +288,10 @@
   gap: 10px;
   padding: 10px 16px;
   margin: 12px 0;
-  background: #f8f9fb;
+  background: var(--bg-subtle);
   border-radius: 8px;
-  border: 1px solid #e8eaed;
-  color: #777;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
 }
@@ -291,8 +299,8 @@
 .spinner {
   width: 18px;
   height: 18px;
-  border: 2.5px solid #e0e3e8;
-  border-top-color: #4a90e2;
+  border: 2.5px solid var(--border-chip);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   flex-shrink: 0;
@@ -309,8 +317,8 @@
   align-items: flex-end;
   gap: 10px;
   padding: 16px 24px 20px;
-  border-top: 1px solid #eee;
-  background: #fff;
+  border-top: 1px solid var(--border-soft);
+  background: var(--bg-main);
 }
 
 /* Поле растёт вверх: высоту задаёт состояние, размер меняется
@@ -338,22 +346,22 @@
   width: 36px;
   height: 4px;
   border-radius: 2px;
-  background: #d0d5db;
+  background: var(--scrollbar-thumb);
   transition: background 0.15s ease, width 0.15s ease;
 }
 
 .input-resize-handle:hover::after {
-  background: #4a90e2;
+  background: var(--accent);
   width: 48px;
 }
 
 .message-input {
   width: 100%;
   padding: 12px 16px;
-  background: #f8f9fb;
-  border: 1px solid #e0e3e8;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-chip);
   border-radius: 10px;
-  color: #333;
+  color: var(--text-primary);
   font-size: 15px;
   font-family: inherit;
   line-height: 1.5;
@@ -366,27 +374,27 @@
 }
 
 .message-input::placeholder {
-  color: #aaa;
+  color: var(--text-faint);
 }
 
 .message-input:focus {
-  border-color: #4a90e2;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.08);
-  background: #fff;
+  background: var(--bg-elevated);
 }
 
 .message-input:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-  background: #f3f3f3;
+  background: var(--bg-disabled-input);
 }
 
 .send-button {
   padding: 10px 22px;
-  background: #4a90e2;
+  background: var(--accent);
   border: none;
   border-radius: 10px;
-  color: #fff;
+  color: var(--accent-text-on);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -397,30 +405,30 @@
 }
 
 .send-button:hover:not(:disabled) {
-  background: #3a80d2;
+  background: var(--accent-hover);
 }
 
 .send-button:active:not(:disabled) {
-  background: #2f6db8;
+  background: var(--accent-active);
 }
 
 .send-button:disabled {
   opacity: 0.35;
   cursor: not-allowed;
-  background: #b0b8c4;
+  background: var(--scrollbar-thumb);
 }
 
 .role-progress {
   margin: 10px 0;
   padding: 10px 14px;
-  background: #f0f7ff;
+  background: var(--accent-soft-bg);
   border-radius: 8px;
-  border: 1px solid #dce9f7;
+  border: 1px solid var(--accent-soft-border);
 }
 
 .role-progress-bar {
   height: 3px;
-  background: #dce9f7;
+  background: var(--accent-soft-border);
   border-radius: 2px;
   margin-bottom: 8px;
   overflow: hidden;
@@ -428,19 +436,19 @@
 
 .role-progress-fill {
   height: 100%;
-  background: #4a90e2;
+  background: var(--accent);
   border-radius: 2px;
   transition: width 0.3s ease;
 }
 
 .role-progress-text {
   font-size: 12px;
-  color: #5a8abf;
+  color: var(--accent-muted-text);
   font-weight: 500;
   line-height: 1.4;
 }
 
 .progress-waiting {
-  color: #aab;
+  color: var(--text-faint);
   font-weight: 400;
 }

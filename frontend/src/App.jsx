@@ -6,6 +6,19 @@ import './styles/App.css';
 
 const SETTINGS_STORAGE_KEY = 'llm_council_settings';
 const DEVICE_ID_STORAGE_KEY = 'llm_council_device_id';
+const THEME_STORAGE_KEY = 'llm_council_theme';
+
+// Тема: сохранённый выбор, иначе — системная настройка ОС
+function loadTheme() {
+  const saved = localStorage.getItem(THEME_STORAGE_KEY);
+  if (saved === 'dark' || saved === 'light') return saved;
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
+  }
+  return 'light';
+}
 
 function loadSettings() {
   try {
@@ -71,7 +84,7 @@ function buildDisplayConversation(base, overlay) {
   return { ...base, messages: [...messages, ...extra] };
 }
 
-function CouncilPage({ mode, deviceId, settings, onOpenSettings, setup }) {
+function CouncilPage({ mode, deviceId, settings, onOpenSettings, setup, theme, onToggleTheme }) {
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
@@ -276,8 +289,9 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings, setup }) {
         currentConversationId={currentConversationId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={showSetup ? null : handleNewConversation}
-        onDeleteConversation={setDeleteTarget}
         onOpenSettings={onOpenSettings}
+        theme={theme}
+        onToggleTheme={onToggleTheme}
       />
       {setup && currentConversationId === null ? (
         <setup.Screen onStart={(members) => handleStartWithProfiles(members)} />
@@ -310,6 +324,16 @@ export default function App() {
   const [envConfig, setEnvConfig] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [deviceId] = useState(loadDeviceId);
+  const [theme, setTheme] = useState(loadTheme);
+
+  // Тема применяется атрибутом на <html> — её видят все CSS-переменные
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
+
+  const toggleTheme = () =>
+    setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
   // Backend config нужен только модалке настроек — грузим один раз на всё приложение
   useEffect(() => {
@@ -343,6 +367,8 @@ export default function App() {
               deviceId={deviceId}
               settings={settings}
               onOpenSettings={openSettings}
+              theme={theme}
+              onToggleTheme={toggleTheme}
             />
           }
         />
@@ -355,6 +381,8 @@ export default function App() {
               deviceId={deviceId}
               settings={settings}
               onOpenSettings={openSettings}
+              theme={theme}
+              onToggleTheme={toggleTheme}
             />
           }
         />
@@ -369,6 +397,8 @@ export default function App() {
               settings={settings}
               onOpenSettings={openSettings}
               setup={{ Screen: LeaderPicker }}
+              theme={theme}
+              onToggleTheme={toggleTheme}
             />
           }
         />
@@ -383,6 +413,8 @@ export default function App() {
               settings={settings}
               onOpenSettings={openSettings}
               setup={{ Screen: StaffPicker }}
+              theme={theme}
+              onToggleTheme={toggleTheme}
             />
           }
         />
