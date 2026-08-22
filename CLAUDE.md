@@ -28,6 +28,7 @@ LLM Council — это трёхэтапная система обсуждени�
 - Содержит `DIRECTOR_MODEL` (модель цифрового руководителя в режиме `dialogue`; по умолчанию = `ROLEPLAY_MODEL`)
 - Содержит `TITLE_MODEL` (модель для генерации заголовков разговоров; по умолчанию = `CHAIRMAN_MODEL`)
 - Читает переменные окружения из `backend/.env`: `OPENROUTER_API_KEY`, `OPENROUTER_API_URL`, `COUNCIL_MODELS`, `CHAIRMAN_MODEL`, `ROLEPLAY_MODEL`, `TITLE_MODEL`, `DATA_DIR`, `COUNCIL_ROLES_FILE`
+- `DATA_DIR` (по умолчанию `backend/data/conversations`) и `LOGS_DIR` (по умолчанию `backend/data/logs`) анкорятся к каталогу `backend/`: относительные значения из `.env` и запуск из любого cwd дают один и тот же путь (`_anchor_to_backend` в config.py)
 - `COUNCIL_ROLES` (роли для ролевого режима) загружается из `backend/person/role/roles.json` через `load_council_roles()`; ключи, начинающиеся с `_`, игнорируются (заметки); при отсутствии/пустом файле — встроенные `DEFAULT_COUNCIL_ROLES`
 - Бэкенд работает на **порту 8001** (НЕ 8000 — у пользователя другое приложение на 8000)
 
@@ -37,6 +38,7 @@ LLM Council — это трёхэтапная система обсуждени�
 - `DEFAULT_OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"` — используется, если URL не задан ни в `.env`, ни в запросе
 - Возвращает словарь с ключами 'content' и опциональным 'reasoning_details'
 - Изящная деградация: возвращает None при сбое и продолжает работу с успешными ответами
+- **Логирование**: каждый вызов модели (sync и stream, включая заголовки разговоров) пишется через `llm_logs.py` одной JSONL-строкой в дневной файл `LOGS_DIR/llm_calls_YYYY-MM-DD.jsonl`: `{ts, stream, model, duration_s, messages, response, [error]}`; при обрыве стрима клиентом логируется часть ответа (`truncated: true`); API-ключ никогда не логируется; сбой записи лога не ломает генерацию; выключается в `.env` через `LLM_LOGS_ENABLED=false` (флаг читается при старте — нужен перезапуск бэкенда)
 
 **`src/council/`** — пакет, ядро логики (бывший `council.py`). `__init__.py` реэкспортирует весь публичный API, поэтому внешние импорты не менялись: `from council import run_full_council, ...`
 - **`common.py`**: `MODE_ENSEMBLE` / `MODE_ROLEPLAY` (константы режимов), `get_display_name()` (роль или модель для отображения), `make_labels()` / `build_label_to_model()` (анонимные метки «Response A, B...» и сопоставление для деанонимизации)
@@ -235,6 +237,10 @@ LLM Council — это трёхэтапная система обсуждени�
 ## Заметки по тестированию
 
 Используйте `test_openrouter.py` для проверки подключения к API и тестирования различных идентификаторов моделей перед добавлением их в совет. Скрипт тестирует как потоковый, так и непотоковый режимы.
+
+`backend/test_llm_logs.py` проверяет логирование LLM-вызовов (sync/stream/ошибка) против локального фейкового OpenRouter без реальных трат: `python backend/test_llm_logs.py`.
+
+`backend/check_dialogue.py <id>` — привязка разговора к профилю и полный системный промпт; `backend/backfill_rankings.py` — одноразовый бэкфилл metadata (рейтинги) для старых разговоров совета.
 
 ## Сводка потока данных
 

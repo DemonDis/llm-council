@@ -38,8 +38,32 @@ DIRECTOR_MODEL = os.getenv("DIRECTOR_MODEL") or ROLEPLAY_MODEL
 # Модель для генерации заголовков разговоров (по умолчанию — модель председателя)
 TITLE_MODEL = os.getenv("TITLE_MODEL") or CHAIRMAN_MODEL or "gemini-3-pro"
 
-# Каталог для хранения разговоров
-DATA_DIR = os.getenv("DATA_DIR", "data/conversations")
+# Каталоги хранения: привязаны к backend/, а не к текущему каталогу запуска,
+# поэтому данные всегда попадают в backend/data независимо от cwd.
+# Относительные значения (в т.ч. из .env) тоже анкорятся к backend/.
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _anchor_to_backend(value: str) -> str:
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        path = _BACKEND_ROOT / path
+    return str(path)
+
+
+# Каталог для хранения разговоров (по умолчанию backend/data/conversations)
+DATA_DIR = _anchor_to_backend(os.getenv("DATA_DIR") or "data/conversations")
+
+# Каталог для логов запросов/ответов к LLM (по умолчанию backend/data/logs)
+LOGS_DIR = _anchor_to_backend(os.getenv("LOGS_DIR") or "data/logs")
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    return os.getenv(name, str(default)).strip().lower() in ("1", "true", "yes", "on", "да")
+
+
+# Логирование вызовов LLM включено по умолчанию; отключается в .env: LLM_LOGS_ENABLED=false
+LLM_LOGS_ENABLED = _env_bool("LLM_LOGS_ENABLED", True)
 
 # Роли по умолчанию (используются, если roles.json в person/role не создан или пуст)
 DEFAULT_COUNCIL_ROLES = {

@@ -1,9 +1,11 @@
 """Клиент API OpenRouter для запросов к LLM."""
 import ssl
 import json
+import time
 import httpx
 from typing import List, Dict, Any, Optional
 from config import OPENROUTER_API_KEY, OPENROUTER_API_URL
+from llm_logs import log_llm_call
 
 # Создаём SSL-контекст с отключённой верификацией (как в rick/backend/src/app.py)
 _SSL_CTX = ssl.create_default_context()
@@ -55,6 +57,7 @@ async def query_model(
     approx_tokens = num_chars / 4
     print(f"DEBUG: Querying model '{model}'. Payload size: ~{num_chars} chars, ~{int(approx_tokens)} tokens.")
 
+    started = time.monotonic()
     try:
         # Создаём транспорт с кастомным SSL-контекстом (как в rick/backend/src/app.py)
         transport = httpx.AsyncHTTPTransport(verify=_SSL_CTX)
@@ -69,13 +72,22 @@ async def query_model(
             data = response.json()
             message = data['choices'][0]['message']
 
-            return {
+            result = {
                 'content': message.get('content'),
                 'reasoning_details': message.get('reasoning_details')
             }
+            log_llm_call(
+                model, messages, response=result,
+                duration_s=time.monotonic() - started,
+            )
+            return result
 
     except Exception as e:
         print(f"Error querying model {model}: {e}")
+        log_llm_call(
+            model, messages, error=e,
+            duration_s=time.monotonic() - started,
+        )
         return None
 
 
@@ -111,6 +123,9 @@ async def query_model_stream(
 
     print(f"DEBUG: Streaming query to model '{model}'.")
 
+    started = time.monotonic()
+    accumulated = ""
+    logged = False
     try:
         transport = httpx.AsyncHTTPTransport(verify=_SSL_CTX)
         async with httpx.AsyncClient(timeout=timeout, transport=transport, follow_redirects=True) as client:
@@ -130,12 +145,36 @@ async def query_model_stream(
                             delta = choices[0].get("delta", {})
                             content = delta.get("content")
                             if content:
+                                accumulated += content
                                 yield {"content": content}
                     except json.JSONDecodeError:
                         continue
+
+        log_llm_call(
+            model, messages,
+            response={"content": accumulated},
+            duration_s=time.monotonic() - started,
+            stream=True,
+        )
+        logged = True
     except Exception as e:
         print(f"Error streaming from model {model}: {e}")
+        log_llm_call(
+            model, messages, error=e,
+            duration_s=time.monotonic() - started,
+            stream=True,
+        )
+        logged = True
         yield None
+    finally:
+        # Потребитель оборвал генератор (клиент отключился) — логируем часть ответа
+        if not logged:
+            log_llm_call(
+                model, messages,
+                response={"content": accumulated, "truncated": True},
+                duration_s=time.monotonic() - started,
+                stream=True,
+            )
 
 async def query_models_parallel(
     models: List[str],
