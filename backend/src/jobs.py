@@ -24,8 +24,11 @@ from council import (
     stage3_synthesize_final_stream,
     build_label_to_model,
     dialogue_reply_stream,
+    load_team_profiles,
+    team_collect_stream,
     MODE_ROLEPLAY,
     MODE_DIALOGUE,
+    MODE_STAFF,
 )
 
 logger = logging.getLogger(__name__)
@@ -139,6 +142,7 @@ def start_job(
     api_url=None,
     profile_id: str | None = None,
     history: list | None = None,
+    profile_ids: list | None = None,
 ) -> Job:
     """
     Запускает фоновую генерацию ответа.
@@ -147,6 +151,7 @@ def start_job(
     добавлены в хранилище ДО вызова — здесь только запуск задачи.
 
     Для режима 'dialogue' передаются profile_id руководителя и история беседы.
+    Для режима 'staff' — profile_ids выбранных сотрудников.
     """
     _prune_expired()
 
@@ -158,7 +163,7 @@ def start_job(
     job = Job(key, conversation_id, message_index)
     _jobs[key] = job
     job.task = asyncio.create_task(
-        _run_job(job, content, mode, api_key, api_url, profile_id, history or [])
+        _run_job(job, content, mode, api_key, api_url, profile_id, history or [], profile_ids)
     )
     return job
 
@@ -185,6 +190,51 @@ async def _run_dialogue_generation(job, content, profile_id, history, api_key, a
         "type": "reply_complete",
         "data": {"model": model_name, "response": accumulated},
     })
+
+
+async def _run_staff_generation(job, content, profile_ids, api_key, api_url):
+    """Ветка 'staff': параллельные ответы выбранных сотрудников штаба."""
+    profiles = load_team_profiles(profile_ids)
+    if not profiles:
+        raise ValueError("No valid staff profiles selected")
+
+    await _publish(job, {"type": "stage1_start", "roles_total": len(profiles)})
+
+    stage1_results = []
+    async for chunk in team_collect_stream(
+        profile_ids, content, api_key=api_key, api_url=api_url
+    ):
+        if chunk["type"] == "start":
+            await _publish(job, {
+                "type": "stage1_role_start",
+                "index": chunk["index"],
+                "role": chunk["role"],
+            })
+        elif chunk["type"] == "active":
+            await _publish(job, {
+                "type": "stage1_role_active",
+                "index": chunk["index"],
+                "role": chunk["role"],
+            })
+        elif chunk["type"] == "chunk":
+            await _publish(job, {
+                "type": "stage1_chunk",
+                "index": chunk["index"],
+                "content": chunk["content"],
+            })
+        elif chunk["type"] == "done":
+            stage1_results.append({
+                "model": chunk["model"],
+                "role": chunk["role"],
+                "response": chunk["response"],
+            })
+
+    metadata = {"mode": MODE_STAFF}
+
+    # Штаб ограничивается ответами участников: этапов 2/3 нет
+    _save_partial(job, {"stage1": stage1_results})
+    await _publish(job, {"type": "stage1_complete", "data": stage1_results, "metadata": metadata})
+    _save_partial(job, {"metadata": metadata, "status": "complete"})
 
 
 async def _run_council_generation(job, content, mode, api_key, api_url):
@@ -313,7 +363,7 @@ async def _run_council_generation(job, content, mode, api_key, api_url):
     await _publish(job, {"type": "stage3_complete", "data": stage3_result})
 
 
-async def _run_job(job: Job, content: str, mode: str, api_key, api_url, profile_id=None, history=None):
+async def _run_job(job: Job, content: str, mode: str, api_key, api_url, profile_id=None, history=None, profile_ids=None):
     """Пайплайн одного сообщения: ветка режима + заголовок, публикация событий."""
     conversation_id = job.conversation_id
     index = job.message_index
@@ -333,6 +383,8 @@ async def _run_job(job: Job, content: str, mode: str, api_key, api_url, profile_
             await _run_dialogue_generation(
                 job, content, profile_id, history, api_key, api_url
             )
+        elif mode == MODE_STAFF:
+            await _run_staff_generation(job, content, profile_ids, api_key, api_url)
         else:
             await _run_council_generation(job, content, mode, api_key, api_url)
 
@@ -413,12 +465,15 @@ def synthesize_events_from_message(message: dict, fallback_mode: str = "ensemble
         })
 
     stage1 = message.get("stage1")
+    metadata = message.get("metadata")
     if stage1:
         events.append({"type": "stage1_start", "roles_total": len(stage1)})
-        events.append({"type": "stage1_complete", "data": stage1})
+        stage1_event = {"type": "stage1_complete", "data": stage1}
+        if metadata:
+            stage1_event["metadata"] = metadata
+        events.append(stage1_event)
 
     stage2 = message.get("stage2")
-    metadata = message.get("metadata")
     if stage2:
         events.append({"type": "stage2_start"})
         events.append({

@@ -7,6 +7,7 @@ const LOADING_TEXTS = {
   stage1: {
     ensemble: 'Этап 1: собираем ответы моделей...',
     roleplay: 'Этап 1: начинаем опрос ролей...',
+    staff: 'Штаб: запрашиваем мнения офицеров...',
   },
   stage2: {
     ensemble: 'Этап 2: взаимное ранжирование моделей...',
@@ -16,7 +17,7 @@ const LOADING_TEXTS = {
 };
 
 function getRoleProgress(msg, mode) {
-  if (mode !== 'roleplay') return null;
+  if (mode !== 'roleplay' && mode !== 'staff') return null;
   const slots = msg.streamingSlots || {};
   const indices = Object.keys(slots).map(Number);
   if (indices.length === 0) return null;
@@ -94,6 +95,8 @@ export default function ChatInterface({
   const [inputHeight, setInputHeight] = useState(72);
   const messagesEndRef = useRef(null);
 
+  const teamSize = Object.keys(conversation?.profile_names || {}).length;
+
   const INPUT_MIN_HEIGHT = 48;
   const INPUT_MAX_HEIGHT = 240;
   const INPUT_DEFAULT_HEIGHT = 72;
@@ -165,19 +168,35 @@ export default function ChatInterface({
           )}
         </div>
       )}
+      {mode === 'staff' && teamSize > 0 && (
+        <div className="dialogue-header">
+          <span className="dialogue-header-avatar">🎖️</span>
+          <span className="dialogue-header-name">Командный штаб</span>
+          <span className="dialogue-header-meta">{teamSize} участн.</span>
+          {isLoading && (
+            <span className="dialogue-header-status">совещается…</span>
+          )}
+        </div>
+      )}
       <div className="messages-container">
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">{mode === 'dialogue' ? '👔' : '💬'}</div>
+            <div className="empty-state-icon">
+              {mode === 'dialogue' ? '👔' : mode === 'staff' ? '🎖️' : '💬'}
+            </div>
             <h2>
               {mode === 'dialogue'
                 ? conversation.profile_name || 'Руководитель'
-                : 'Начните разговор'}
+                : mode === 'staff'
+                  ? 'Командный штаб'
+                  : 'Начните разговор'}
             </h2>
             <p>
               {mode === 'dialogue'
                 ? 'Напишите первое сообщение, чтобы начать диалог'
-                : 'Задайте вопрос, чтобы посоветоваться с LLM Council'}
+                : mode === 'staff'
+                  ? 'Задайте вопрос — выбранные офицеры ответят каждый со своей позиции'
+                  : 'Задайте вопрос, чтобы посоветоваться с LLM Council'}
             </p>
           </div>
         ) : (
@@ -207,6 +226,28 @@ export default function ChatInterface({
                     </div>
                   )}
                   {msg.status === 'error' && !msg.content && !msg.streamingReply && (
+                    <div className="dialogue-error">
+                      Ответ не получен. Отправьте сообщение ещё раз.
+                    </div>
+                  )}
+                </div>
+              ) : mode === 'staff' ? (
+                <div className="assistant-message">
+                  <div className="message-label">Командный штаб</div>
+
+                  {msg.loading?.stage1 && !msg.stage1 && Object.keys(msg.streamingSlots || {}).length === 0 && (
+                    <StageLoading text={LOADING_TEXTS.stage1.staff} />
+                  )}
+                  <RoleProgressIndicator
+                    progress={getRoleProgress(msg, mode)}
+                    prefix="Запрос"
+                  />
+                  {msg.stage1 ? (
+                    <Stage1 responses={msg.stage1} />
+                  ) : (
+                    <Stage1 streamingSlots={msg.streamingSlots} />
+                  )}
+                  {msg.status === 'error' && !msg.stage1 && Object.keys(msg.streamingSlots || {}).length === 0 && (
                     <div className="dialogue-error">
                       Ответ не получен. Отправьте сообщение ещё раз.
                     </div>
@@ -272,7 +313,9 @@ export default function ChatInterface({
             <span>
               {mode === 'dialogue'
                 ? 'Руководитель размышляет…'
-                : 'Совет размышляет...'}
+                : mode === 'staff'
+                  ? 'Штаб совещается…'
+                  : 'Совет размышляет...'}
             </span>
           </div>
         )}
@@ -294,7 +337,9 @@ export default function ChatInterface({
             placeholder={
               mode === 'dialogue'
                 ? 'Напишите руководителю... (Shift+Enter — новая строка)'
-                : 'Задайте вопрос... (Shift+Enter — новая строка)'
+                : mode === 'staff'
+                  ? 'Задайте вопрос штабу... (Shift+Enter — новая строка)'
+                  : 'Задайте вопрос... (Shift+Enter — новая строка)'
             }
             value={input}
             onChange={(e) => setInput(e.target.value)}

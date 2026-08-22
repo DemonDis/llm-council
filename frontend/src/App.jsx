@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { Sidebar, ChatInterface, ModeStub, LeaderPicker, Settings, ConfirmDialog } from './components';
+import { Sidebar, ChatInterface, LeaderPicker, StaffPicker, Settings, ConfirmDialog } from './components';
 import { api, councilStream } from './utils';
 import './styles/App.css';
 
@@ -180,16 +180,19 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings, setup }) {
     }
   };
 
-  // Диалог с выбранным руководителем: создаём разговор с его профилем
-  const handleStartWithProfile = async (leader) => {
+  // Режимы с выбором участников: диалог — один руководитель,
+  // штаб — массив выбранных сотрудников
+  const handleStartWithProfiles = async (members) => {
     if (!setup) return;
     try {
-      const newConv = await api.createConversation({
-        device_id: deviceId,
-        mode,
-        profile_id: leader.id,
-        profile_name: leader.name,
-      });
+      const payload = { device_id: deviceId, mode };
+      if (mode === 'staff') {
+        payload.profile_ids = members.map((m) => m.id);
+      } else {
+        payload.profile_id = members[0].id;
+        payload.profile_name = members[0].name;
+      }
+      const newConv = await api.createConversation(payload);
       setConversations((prev) => [
         {
           id: newConv.id,
@@ -202,7 +205,7 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings, setup }) {
       ]);
       setCurrentConversationId(newConv.id);
     } catch (error) {
-      console.error('Failed to create dialogue conversation:', error);
+      console.error('Failed to create conversation:', error);
     }
   };
 
@@ -276,7 +279,7 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings, setup }) {
         onOpenSettings={onOpenSettings}
       />
       {setup && currentConversationId === null ? (
-        <setup.Screen onStart={(leader) => handleStartWithProfile(leader)} />
+        <setup.Screen onStart={(members) => handleStartWithProfiles(members)} />
       ) : (
         <ChatInterface
           conversation={displayConversation}
@@ -297,65 +300,6 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings, setup }) {
           onCancel={() => setDeleteTarget(null)}
         />
       )}
-    </div>
-  );
-}
-
-// Страница-заглушка нереализованного режима: тот же каркас с сайдбаром,
-// но без разговоров, пока режим не поддержан на бэкенде.
-// При переходе на страницу запрашивается список имён нужной группы
-// ('personnel' — Командный штаб, 'leaders' — Диалог с руководителем).
-function StubPage({ modeStub, group, onOpenSettings }) {
-  const [loaded, setLoaded] = useState(null); // { group, profiles }
-
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .getStaff(group)
-      .then((profiles) => {
-        if (!cancelled) setLoaded({ group, profiles });
-      })
-      .catch((error) => {
-        console.error('Failed to load staff:', error);
-        if (!cancelled) setLoaded({ group, profiles: null });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [group]);
-
-  const current = loaded && loaded.group === group ? loaded : null;
-
-  return (
-    <div className="app">
-      <Sidebar
-        conversations={[]}
-        currentConversationId={null}
-        onSelectConversation={() => {}}
-        onNewConversation={null}
-        onDeleteConversation={() => {}}
-        onOpenSettings={onOpenSettings}
-      />
-      <ModeStub {...modeStub}>
-        {!current ? (
-          <p>Загружаем профили…</p>
-        ) : current.profiles === null ? (
-          <p>Не удалось загрузить список профилей</p>
-        ) : (
-          <ul className="profile-list">
-            {current.profiles.map((profile) => (
-              <li
-                key={profile.id}
-                className={`profile-item${
-                  profile.status !== 'active' ? ' inactive' : ''
-                }`}
-              >
-                {profile.name}
-              </li>
-            ))}
-          </ul>
-        )}
-      </ModeStub>
     </div>
   );
 }
@@ -427,19 +371,17 @@ export default function App() {
             />
           }
         />
-        {/* Заглушка: режим пока не реализован на бэкенде */}
+        {/* Командный штаб: выбор нескольких офицеров, затем совещание */}
         <Route
           path="/staff"
           element={
-            <StubPage
+            <CouncilPage
+              key="staff"
+              mode="staff"
+              deviceId={deviceId}
+              settings={settings}
               onOpenSettings={openSettings}
-              group="personnel"
-              modeStub={{
-                icon: '🎖️',
-                title: 'Командный штаб',
-                description:
-                  'Страница в разработке. Здесь команда специалистов (аналитик, стратег, логист и другие офицеры штаба) будет совместно вырабатывать план действий по вашей задаче.',
-              }}
+              setup={{ Screen: StaffPicker }}
             />
           }
         />

@@ -9,6 +9,8 @@ class CreateConversationRequest(BaseModel):
     # Режим 'dialogue': выбранный руководитель (его профиль используется как системный промпт)
     profile_id: Optional[str] = None
     profile_name: Optional[str] = None
+    # Режим 'staff': id выбранных сотрудников (имена резолвит бэкенд)
+    profile_ids: Optional[List[str]] = None
 
 class SendMessageRequest(BaseModel):
     """Запрос на отправку сообщения в разговоре."""
@@ -31,6 +33,8 @@ class ConversationMetadata(BaseModel):
     device_ip: Optional[str] = None
     profile_id: Optional[str] = None
     profile_name: Optional[str] = None
+    profile_ids: Optional[List[str]] = None
+    profile_names: Optional[Dict[str, str]] = None
 
 class Conversation(BaseModel):
     """Полный разговор со всеми сообщениями."""
@@ -43,3 +47,5 @@ class Conversation(BaseModel):
     device_ip: Optional[str] = None
     profile_id: Optional[str] = None
     profile_name: Optional[str] = None
+    profile_ids: Optional[List[str]] = None
+    profile_names: Optional[Dict[str, str]] = None

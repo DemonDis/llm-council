@@ -8,7 +8,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 from config import DATA_DIR
-from council.common import MODE_DIALOGUE
+from council.common import MODE_DIALOGUE, MODE_STAFF
+import staff
 
 # Сентинелл «поле не передано» — чтобы отличать от явного None
 UNSET = object()
@@ -41,7 +42,8 @@ def create_conversation(
     device_ip: Optional[str] = None,
     mode: str = "ensemble",
     profile_id: Optional[str] = None,
-    profile_name: Optional[str] = None
+    profile_name: Optional[str] = None,
+    profile_ids: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
     Создание нового разговора.
@@ -50,9 +52,10 @@ def create_conversation(
         conversation_id: Уникальный идентификатор разговора
         device_id: Идентификатор устройства/браузера, создавшего разговор
         device_ip: IP-адрес устройства, создавшего разговор
-        mode: Режим совета ('ensemble', 'roleplay' или 'dialogue')
+        mode: Режим совета ('ensemble', 'roleplay', 'dialogue' или 'staff')
         profile_id: Режим 'dialogue': id профиля руководителя (person/staff/leaders)
         profile_name: Режим 'dialogue': имя руководителя для отображения
+        profile_ids: Режим 'staff': id выбранных сотрудников (person/staff/personnel)
 
     Returns:
         Словарь нового разговора
@@ -60,6 +63,14 @@ def create_conversation(
     ensure_data_dir()
 
     with _get_lock(conversation_id):
+        # Штаб: имена участников резолвим на сервере по валидным профилям
+        team_names: Dict[str, str] = {}
+        if mode == MODE_STAFF:
+            for pid in profile_ids or []:
+                profile = staff.load_staff_profile(staff.GROUP_PERSONNEL, pid)
+                if profile is not None:
+                    team_names[pid] = profile["name"]
+
         conversation = {
             "id": conversation_id,
             "created_at": datetime.utcnow().isoformat(),
@@ -67,8 +78,10 @@ def create_conversation(
             "mode": mode,
             "device_id": device_id,
             "device_ip": device_ip,
-            "profile_id": profile_id if mode == "dialogue" else None,
-            "profile_name": profile_name if mode == "dialogue" else None,
+            "profile_id": profile_id if mode == MODE_DIALOGUE else None,
+            "profile_name": profile_name if mode == MODE_DIALOGUE else None,
+            "profile_ids": list(team_names.keys()) if mode == MODE_STAFF else None,
+            "profile_names": team_names if mode == MODE_STAFF else None,
             "messages": []
         }
 
@@ -261,13 +274,22 @@ def add_pending_assistant_message(conversation_id: str) -> int:
         if conversation is None:
             raise ValueError(f"Conversation {conversation_id} not found")
 
-        # В режиме 'dialogue' этапы совета не используются — не храним их
-        # даже как null, чтобы JSON сообщений оставался чистым.
-        if conversation.get("mode") == MODE_DIALOGUE:
+        # В режимах без этапов совета не храним лишние ключи даже как null,
+        # чтобы JSON сообщений оставался чистым.
+        mode = conversation.get("mode")
+        if mode == MODE_DIALOGUE:
             stub = {
                 "role": "assistant",
                 "status": "pending",
                 "content": None,
+            }
+        elif mode == MODE_STAFF:
+            # У штаба только ответы участников (stage1) и метаданные
+            stub = {
+                "role": "assistant",
+                "status": "pending",
+                "stage1": None,
+                "metadata": None,
             }
         else:
             stub = {
@@ -349,16 +371,21 @@ def add_assistant_message(
         message = {
             "role": "assistant",
             "status": "complete",
-            "content": content,
         }
-        if content is None or stage1 is not None:
-            # Полноценное сообщение совета (или явная запись пустых этапов)
-            message.update({
-                "stage1": stage1,
-                "stage2": stage2,
-                "stage3": stage3,
-                "metadata": metadata,
-            })
+        if content is not None:
+            # Режим 'dialogue': простой текст вместо этапов совета
+            message["content"] = content
+        else:
+            # Совет/штаб: в хранилище попадают только реально переданные
+            # поля (у штаба нет stage2/stage3/content)
+            for key, value in (
+                ("stage1", stage1),
+                ("stage2", stage2),
+                ("stage3", stage3),
+                ("metadata", metadata),
+            ):
+                if value is not None:
+                    message[key] = value
         conversation["messages"].append(message)
 
         save_conversation(conversation)

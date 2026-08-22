@@ -95,6 +95,8 @@ function applyEvent(prev, eventType, event) {
 
     case 'stage1_complete':
       m.stage1 = event.data;
+      // Режим 'staff' передаёт метаданные уже здесь (этапов 2/3 у него нет)
+      if (event.metadata) m.metadata = event.metadata;
       m.loading.stage1 = false;
       m.streamingSlots = {};
       m.activeRoleIndex = -1;

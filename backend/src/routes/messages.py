@@ -13,7 +13,10 @@ from council import (
     generate_conversation_title,
     calculate_aggregate_rankings,
     MODE_DIALOGUE,
+    MODE_STAFF,
     dialogue_reply,
+    team_collect,
+    load_team_profiles,
 )
 from schemas import SendMessageRequest
 from utils import get_client_ip
@@ -66,9 +69,25 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
         )
         storage.update_conversation_title(conversation_id, title)
 
-    metadata = {"mode": request.mode}
+    # Штаб: профиль берём из разговора, а не из запроса
+    mode = conversation["mode"] if conversation.get("mode") else request.mode
+    metadata = {"mode": mode}
 
-    if request.mode == MODE_DIALOGUE:
+    if mode == MODE_STAFF:
+        stage1_results = await team_collect(
+            conversation.get("profile_ids"),
+            request.content,
+            api_key=request.api_key,
+            api_url=request.api_url
+        )
+        stage2_results = None
+        stage3_result = None
+        content = None
+        response_payload = {
+            "stage1": stage1_results,
+            "metadata": metadata
+        }
+    elif mode == MODE_DIALOGUE:
         reply = await dialogue_reply(
             conversation["profile_id"],
             request.content,
@@ -88,7 +107,7 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
     else:
         stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
             request.content,
-            request.mode,
+            mode,
             request.api_key,
             request.api_url
         )
@@ -134,8 +153,11 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
             get_client_ip(http_request)
         )
 
-    if conversation["mode"] == MODE_DIALOGUE and not conversation.get("profile_id"):
+    conv_mode = conversation["mode"]
+    if conv_mode == MODE_DIALOGUE and not conversation.get("profile_id"):
         raise HTTPException(status_code=400, detail="Dialogue conversation has no leader profile")
+    if conv_mode == MODE_STAFF and not load_team_profiles(conversation.get("profile_ids") or []):
+        raise HTTPException(status_code=400, detail="Staff conversation has no valid member profiles")
 
     # История беседы для режима 'dialogue' — до добавления нового сообщения
     history = _dialogue_history(conversation)
@@ -157,6 +179,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
         api_url=request.api_url,
         profile_id=conversation.get("profile_id"),
         history=history,
+        profile_ids=conversation.get("profile_ids"),
     )
 
     return _sse_response(jobs.stream_job_events(job))
