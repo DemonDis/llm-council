@@ -15,7 +15,7 @@ from council import (
     MODE_DIALOGUE,
     MODE_STAFF,
     dialogue_reply,
-    team_collect,
+    team_reply,
     load_team_profiles,
 )
 from schemas import SendMessageRequest
@@ -74,18 +74,21 @@ async def send_message(conversation_id: str, request: SendMessageRequest, http_r
     metadata = {"mode": mode}
 
     if mode == MODE_STAFF:
-        stage1_results = await team_collect(
+        reply = await team_reply(
             conversation.get("profile_ids"),
             request.content,
+            history=history,
             api_key=request.api_key,
             api_url=request.api_url
         )
+        stage1_results = None
         stage2_results = None
         stage3_result = None
-        content = None
+        metadata = None
+        content = reply["response"]
         response_payload = {
-            "stage1": stage1_results,
-            "metadata": metadata
+            "model": reply["model"],
+            "content": content,
         }
     elif mode == MODE_DIALOGUE:
         reply = await dialogue_reply(

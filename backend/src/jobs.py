@@ -25,7 +25,7 @@ from council import (
     build_label_to_model,
     dialogue_reply_stream,
     load_team_profiles,
-    team_collect_stream,
+    team_reply_stream,
     MODE_ROLEPLAY,
     MODE_DIALOGUE,
     MODE_STAFF,
@@ -192,49 +192,32 @@ async def _run_dialogue_generation(job, content, profile_id, history, api_key, a
     })
 
 
-async def _run_staff_generation(job, content, profile_ids, api_key, api_url):
-    """Ветка 'staff': параллельные ответы выбранных сотрудников штаба."""
+async def _run_staff_generation(job, content, profile_ids, history, api_key, api_url):
+    """Ветка 'staff': единый ответ штаба по профилям всех выбранных участников."""
     profiles = load_team_profiles(profile_ids)
     if not profiles:
         raise ValueError("No valid staff profiles selected")
 
-    await _publish(job, {"type": "stage1_start", "roles_total": len(profiles)})
+    await _publish(job, {"type": "reply_start"})
 
-    stage1_results = []
-    async for chunk in team_collect_stream(
-        profile_ids, content, api_key=api_key, api_url=api_url
+    accumulated = ""
+    model_name = None
+    async for event in team_reply_stream(
+        profile_ids, content, history=history,
+        api_key=api_key, api_url=api_url
     ):
-        if chunk["type"] == "start":
-            await _publish(job, {
-                "type": "stage1_role_start",
-                "index": chunk["index"],
-                "role": chunk["role"],
-            })
-        elif chunk["type"] == "active":
-            await _publish(job, {
-                "type": "stage1_role_active",
-                "index": chunk["index"],
-                "role": chunk["role"],
-            })
-        elif chunk["type"] == "chunk":
-            await _publish(job, {
-                "type": "stage1_chunk",
-                "index": chunk["index"],
-                "content": chunk["content"],
-            })
-        elif chunk["type"] == "done":
-            stage1_results.append({
-                "model": chunk["model"],
-                "role": chunk["role"],
-                "response": chunk["response"],
-            })
+        if event["type"] == "chunk":
+            accumulated += event["content"]
+            await _publish(job, {"type": "reply_chunk", "content": event["content"]})
+        elif event["type"] == "done":
+            model_name = event["model"]
 
-    metadata = {"mode": MODE_STAFF}
-
-    # Штаб ограничивается ответами участников: этапов 2/3 нет
-    _save_partial(job, {"stage1": stage1_results})
-    await _publish(job, {"type": "stage1_complete", "data": stage1_results, "metadata": metadata})
-    _save_partial(job, {"metadata": metadata, "status": "complete"})
+    # Сообщение штаба — единый текст, как в диалоге: без этапов совета
+    _save_partial(job, {"content": accumulated, "status": "complete"})
+    await _publish(job, {
+        "type": "reply_complete",
+        "data": {"model": model_name, "response": accumulated},
+    })
 
 
 async def _run_council_generation(job, content, mode, api_key, api_url):
@@ -384,7 +367,7 @@ async def _run_job(job: Job, content: str, mode: str, api_key, api_url, profile_
                 job, content, profile_id, history, api_key, api_url
             )
         elif mode == MODE_STAFF:
-            await _run_staff_generation(job, content, profile_ids, api_key, api_url)
+            await _run_staff_generation(job, content, profile_ids, history, api_key, api_url)
         else:
             await _run_council_generation(job, content, mode, api_key, api_url)
 

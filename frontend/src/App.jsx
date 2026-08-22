@@ -180,17 +180,18 @@ function CouncilPage({ mode, deviceId, settings, onOpenSettings, setup }) {
     }
   };
 
-  // Режимы с выбором участников: диалог — один руководитель,
+  // Режимы с выбором участников: диалог — один руководитель (объект),
   // штаб — массив выбранных сотрудников
   const handleStartWithProfiles = async (members) => {
     if (!setup) return;
+    const list = Array.isArray(members) ? members : [members];
     try {
       const payload = { device_id: deviceId, mode };
       if (mode === 'staff') {
-        payload.profile_ids = members.map((m) => m.id);
+        payload.profile_ids = list.map((m) => m.id);
       } else {
-        payload.profile_id = members[0].id;
-        payload.profile_name = members[0].name;
+        payload.profile_id = list[0].id;
+        payload.profile_name = list[0].name;
       }
       const newConv = await api.createConversation(payload);
       setConversations((prev) => [

@@ -284,12 +284,11 @@ def add_pending_assistant_message(conversation_id: str) -> int:
                 "content": None,
             }
         elif mode == MODE_STAFF:
-            # У штаба только ответы участников (stage1) и метаданные
+            # Штаб отвечает единым текстом — форма как у диалога
             stub = {
                 "role": "assistant",
                 "status": "pending",
-                "stage1": None,
-                "metadata": None,
+                "content": None,
             }
         else:
             stub = {

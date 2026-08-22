@@ -25,9 +25,9 @@ LLM Council — это трёхэтапная система обсуждени�
 **`src/config.py`**
 - Содержит `COUNCIL_MODELS` (список идентификаторов моделей OpenRouter)
 - Содержит `CHAIRMAN_MODEL` (модель, которая синтезирует итоговый ответ) и `ROLEPLAY_MODEL` (модель для ролевого режима)
-- Содержит `DIRECTOR_MODEL` (модель цифрового руководителя в режиме `dialogue`; по умолчанию = `ROLEPLAY_MODEL`)
+- Содержит `DIRECTOR_MODEL` (модель цифрового руководителя в режиме `dialogue`; по умолчанию = `ROLEPLAY_MODEL`) и `STAFF_MODEL` (модель «Командного штаба»; по умолчанию = `ROLEPLAY_MODEL` — при выборе всех сотрудников промпт огромный, лучше ставить модель с большим контекстом)
 - Содержит `TITLE_MODEL` (модель для генерации заголовков разговоров; по умолчанию = `CHAIRMAN_MODEL`)
-- Читает переменные окружения из `backend/.env`: `OPENROUTER_API_KEY`, `OPENROUTER_API_URL`, `COUNCIL_MODELS`, `CHAIRMAN_MODEL`, `ROLEPLAY_MODEL`, `TITLE_MODEL`, `DATA_DIR`, `COUNCIL_ROLES_FILE`
+- Читает переменные окружения из `backend/.env`: `OPENROUTER_API_KEY`, `OPENROUTER_API_URL`, `COUNCIL_MODELS`, `CHAIRMAN_MODEL`, `ROLEPLAY_MODEL`, `DIRECTOR_MODEL`, `STAFF_MODEL`, `TITLE_MODEL`, `DATA_DIR`, `LOGS_DIR`, `LLM_LOGS_ENABLED`, `COUNCIL_ROLES_FILE`
 - `DATA_DIR` (по умолчанию `backend/data/conversations`) и `LOGS_DIR` (по умолчанию `backend/data/logs`) анкорятся к каталогу `backend/`: относительные значения из `.env` и запуск из любого cwd дают один и тот же путь (`_anchor_to_backend` в config.py)
 - `COUNCIL_ROLES` (роли для ролевого режима) загружается из `backend/person/role/roles.json` через `load_council_roles()`; ключи, начинающиеся с `_`, игнорируются (заметки); при отсутствии/пустом файле — встроенные `DEFAULT_COUNCIL_ROLES`
 - Бэкенд работает на **порту 8001** (НЕ 8000 — у пользователя другое приложение на 8000)

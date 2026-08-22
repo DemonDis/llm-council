@@ -7,7 +7,6 @@ const LOADING_TEXTS = {
   stage1: {
     ensemble: 'Этап 1: собираем ответы моделей...',
     roleplay: 'Этап 1: начинаем опрос ролей...',
-    staff: 'Штаб: запрашиваем мнения офицеров...',
   },
   stage2: {
     ensemble: 'Этап 2: взаимное ранжирование моделей...',
@@ -17,7 +16,7 @@ const LOADING_TEXTS = {
 };
 
 function getRoleProgress(msg, mode) {
-  if (mode !== 'roleplay' && mode !== 'staff') return null;
+  if (mode !== 'roleplay') return null;
   const slots = msg.streamingSlots || {};
   const indices = Object.keys(slots).map(Number);
   if (indices.length === 0) return null;
@@ -169,13 +168,18 @@ export default function ChatInterface({
         </div>
       )}
       {mode === 'staff' && teamSize > 0 && (
-        <div className="dialogue-header">
+        <div className="dialogue-header with-members">
           <span className="dialogue-header-avatar">🎖️</span>
           <span className="dialogue-header-name">Командный штаб</span>
           <span className="dialogue-header-meta">{teamSize} участн.</span>
           {isLoading && (
             <span className="dialogue-header-status">совещается…</span>
           )}
+          <div className="header-members">
+            {Object.values(conversation.profile_names || {}).map((name) => (
+              <span key={name} className="member-chip">{name}</span>
+            ))}
+          </div>
         </div>
       )}
       <div className="messages-container">
@@ -195,7 +199,7 @@ export default function ChatInterface({
               {mode === 'dialogue'
                 ? 'Напишите первое сообщение, чтобы начать диалог'
                 : mode === 'staff'
-                  ? 'Задайте вопрос — выбранные офицеры ответят каждый со своей позиции'
+                  ? 'Опишите задачу: штаб подберёт исполнителя, соберёт команду и оценит риски с учётом профилей участников'
                   : 'Задайте вопрос, чтобы посоветоваться с LLM Council'}
             </p>
           </div>
@@ -211,10 +215,12 @@ export default function ChatInterface({
                     </div>
                   </div>
                 </div>
-              ) : mode === 'dialogue' ? (
+              ) : mode === 'dialogue' || mode === 'staff' ? (
                 <div className="assistant-message">
                   {msg.loading?.reply && !msg.streamingReply && !msg.content && (
-                    <StageLoading text="Руководитель обдумывает ответ…" />
+                    <StageLoading
+                      text={mode === 'staff' ? 'Штаб совещается…' : 'Руководитель обдумывает ответ…'}
+                    />
                   )}
                   {(msg.content || msg.streamingReply) && (
                     <div className="assistant-bubble">
@@ -226,28 +232,6 @@ export default function ChatInterface({
                     </div>
                   )}
                   {msg.status === 'error' && !msg.content && !msg.streamingReply && (
-                    <div className="dialogue-error">
-                      Ответ не получен. Отправьте сообщение ещё раз.
-                    </div>
-                  )}
-                </div>
-              ) : mode === 'staff' ? (
-                <div className="assistant-message">
-                  <div className="message-label">Командный штаб</div>
-
-                  {msg.loading?.stage1 && !msg.stage1 && Object.keys(msg.streamingSlots || {}).length === 0 && (
-                    <StageLoading text={LOADING_TEXTS.stage1.staff} />
-                  )}
-                  <RoleProgressIndicator
-                    progress={getRoleProgress(msg, mode)}
-                    prefix="Запрос"
-                  />
-                  {msg.stage1 ? (
-                    <Stage1 responses={msg.stage1} />
-                  ) : (
-                    <Stage1 streamingSlots={msg.streamingSlots} />
-                  )}
-                  {msg.status === 'error' && !msg.stage1 && Object.keys(msg.streamingSlots || {}).length === 0 && (
                     <div className="dialogue-error">
                       Ответ не получен. Отправьте сообщение ещё раз.
                     </div>

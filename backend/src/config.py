@@ -35,6 +35,11 @@ ROLEPLAY_MODEL = os.getenv("ROLEPLAY_MODEL")
 # (по умолчанию — модель ролевого режима)
 DIRECTOR_MODEL = os.getenv("DIRECTOR_MODEL") or ROLEPLAY_MODEL
 
+# Модель «Командного штаба» (по умолчанию — модель ролевого режима).
+# Штаб собирает ВСЕ выбранные профили в один системный промпт: при большом
+# составе нужна модель с большим контекстом, поэтому настраивается отдельно.
+STAFF_MODEL = os.getenv("STAFF_MODEL") or ROLEPLAY_MODEL
+
 # Модель для генерации заголовков разговоров (по умолчанию — модель председателя)
 TITLE_MODEL = os.getenv("TITLE_MODEL") or CHAIRMAN_MODEL or "gemini-3-pro"
 
