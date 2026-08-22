@@ -314,6 +314,7 @@ export default function ChatInterface({
                       streamingResponse={!msg.stage3 ? msg.streamingStage3 : null}
                     />
                   )}
+                  <TokenBadge tokens={msg.tokens} />
                 </div>
               )}
             </div>
